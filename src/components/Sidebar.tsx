@@ -12,7 +12,8 @@ import {
   Share2,
   Settings,
   UserCheck,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth } from '../lib/firebase';
@@ -23,7 +24,8 @@ const userNavItems = [
   { icon: Users, label: 'My Team Leaders', path: '/team' },
   { icon: Briefcase, label: 'My Job', path: '/tasks' },
   { icon: Coins, label: 'Withdraw', path: '/withdraw' },
-  { icon: UserCheck, label: 'Activate Plan', path: '/activate' },
+  { icon: UserCheck, label: 'Premium Membership', path: '/activate' },
+  { icon: MessageCircle, label: 'Support Line', path: '/support' },
 ];
 
 const adminNavItems = [
@@ -140,16 +142,17 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3 pb-2">
               Menu Links
             </p>
-            {userData?.status === 'inactive' && (
+            {userData?.status !== 'active' && (
               <NavLink
-                to="/activate"
+                to="/activation-payment"
                 onClick={() => onClose()}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-black transition-all bg-amber-500 text-white shadow-lg shadow-amber-100 mb-4 hover:scale-[1.02] active:scale-[0.98]"
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-black transition-all bg-red-600 text-white shadow-lg shadow-red-200 mb-4 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <UserCheck size={20} />
-                Verify Account
+                Activate Now
               </NavLink>
             )}
+            
             {activeNavItems.map((item) => (
               <div key={item.label}>
                 {item.subItems ? (
@@ -189,18 +192,23 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 ) : (
                   <NavLink
                     to={item.path!}
-                    onClick={() => onClose()}
+                    onClick={(e) => {
+                      if (userData?.status !== 'active' && ['/tasks', '/team', '/withdraw', '/activate'].includes(item.path!)) {
+                         e.preventDefault();
+                      }
+                      onClose();
+                    }}
                     className={({ isActive }) => cn(
                       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                       isActive 
                         ? (isAdminView ? "bg-indigo-50 text-indigo-600" : "bg-blue-50 text-blue-600")
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-                      userData?.status === 'inactive' && ['/tasks', '/team', '/withdraw'].includes(item.path!) && "opacity-50"
+                      userData?.status !== 'active' && ['/tasks', '/team', '/withdraw', '/activate'].includes(item.path!) && "opacity-50"
                     )}
                   >
                     <item.icon size={20} />
                     {item.label}
-                    {userData?.status === 'inactive' && ['/tasks', '/team', '/withdraw'].includes(item.path!) && <Lock size={12} className="ml-auto opacity-50" />}
+                    {userData?.status !== 'active' && ['/tasks', '/team', '/withdraw', '/activate'].includes(item.path!) && <Lock size={12} className="ml-auto opacity-50" />}
                   </NavLink>
                 )}
               </div>

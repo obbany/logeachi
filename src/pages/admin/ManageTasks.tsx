@@ -201,7 +201,7 @@ export const ManageTasks = () => {
           )}
         </div>
       </div>
-
+      
       <div className="flex gap-4 border-b border-slate-100 mb-6">
         <button 
           onClick={() => setActiveTab('plans')}
@@ -216,262 +216,199 @@ export const ManageTasks = () => {
           Manage Jobs
         </button>
       </div>
-
-      {loading ? (
+      {loading && (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100">
           <Layout className="w-10 h-10 text-slate-200 animate-pulse mb-2" />
           <p className="text-slate-400 font-medium">Syncing database...</p>
         </div>
-      ) : activeTab === 'jobs' ? (
+      )}
+
+      {!loading && (
         <div className="space-y-6">
-          {isAddingTask && (
-            <div className="bg-white p-8 rounded-3xl border border-blue-100 shadow-2xl animate-in slide-in-from-top duration-300">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-slate-900">{editingTask ? 'Edit Existing Job' : 'Configure New Job'}</h2>
-                <button onClick={() => setIsAddingTask(false)} className="p-2 text-slate-400 hover:text-slate-900">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <form onSubmit={handleTaskSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Job Title</label>
-                    <input required type="text" placeholder="e.g. Subscribe to our YouTube Channel" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.title} onChange={e => setTaskFormData({...taskFormData, title: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Reward Amount (৳)</label>
-                    <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.reward === 0 ? '' : taskFormData.reward} onChange={e => setTaskFormData({...taskFormData, reward: e.target.value ? Number(e.target.value) : 0})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Platform</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.platform} onChange={e => setTaskFormData({...taskFormData, platform: e.target.value})}>
-                      <option value="youtube">YouTube</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="telegram">Telegram</option>
-                      <option value="website">Website</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.category} onChange={e => setTaskFormData({...taskFormData, category: e.target.value})}>
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Target URL</label>
-                    <input required type="url" placeholder="https://..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.url} onChange={e => setTaskFormData({...taskFormData, url: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Thumbnail Image</label>
-                    <input type="file" accept="image/*" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" onChange={e => setSelectedFile(e.target.files ? e.target.files[0] : null)} />
-                    {taskFormData.thumbnail && !selectedFile && <img src={taskFormData.thumbnail} className="mt-2 h-20 rounded-lg" />}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Package</label>
-                    <select required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.packageId} onChange={e => setTaskFormData({...taskFormData, packageId: e.target.value})}>
-                      <option value="">Select Package</option>
-                      {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Detailed Instructions</label>
-                  <textarea required rows={3} placeholder="Explain the task clearly..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={taskFormData.description} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
-                </div>
-                <div className="flex justify-end gap-4 pt-4">
-                  <button type="button" onClick={() => setIsAddingTask(false)} className="px-8 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-2xl transition-colors">Discard</button>
-                  <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all">{editingTask ? 'Apply Changes' : 'Publish Job'}</button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          <div className="space-y-12">
-            {plans.map((plan) => {
-              const planTasks = tasks.filter(t => t.packageId === plan.id);
-              if (planTasks.length === 0) return null;
-              return (
-                <div key={plan.id}>
-                  <h2 className="text-xl font-black mb-6 text-slate-800 border-b pb-2">{plan.name} Package Jobs ({planTasks.length})</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {planTasks.map((task) => (
-                      <div key={task.id} className={cn("group bg-white p-6 rounded-3xl border-2 transition-all duration-300 flex flex-col justify-between", task.status === 'paused' ? "border-slate-100 opacity-75" : "border-transparent shadow-sm hover:shadow-xl hover:border-blue-50")}>
+          {activeTab === 'jobs' && (
+            <div className="space-y-6">
+               {isAddingTask ? (
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm relative">
+                    <button onClick={() => setIsAddingTask(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+                      <X size={24} />
+                    </button>
+                    <h2 className="text-xl font-bold mb-6">{editingTask ? 'Edit Job' : 'Add New Job'}</h2>
+                    <form onSubmit={handleTaskSubmit} className="space-y-4 max-w-2xl">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className={cn("px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", task.status === 'available' ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")}>{task.status}</div>
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => handleTaskEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl"><Edit2 size={16} /></button>
-                              <button onClick={() => toggleTaskStatus(task)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl">{task.status === 'available' ? <Pause size={16} /> : <Play size={16} />}</button>
-                              <button onClick={() => handleTaskDelete(task.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>
-                            </div>
-                          </div>
-                          <div className="aspect-video w-full bg-slate-50 rounded-2xl mb-4 overflow-hidden relative">
-                            {task.thumbnail ? (
-                              <img src={task.thumbnail} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center opacity-20">
-                                <ImageIcon size={40} />
-                              </div>
-                            )}
-                            <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm">
-                              {task.category}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <h3 className="font-black text-slate-900 leading-tight line-clamp-1">{task.title}</h3>
-                            <span className="text-lg font-black text-emerald-600">৳{task.reward}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">{task.description}</p>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Title</label>
+                          <input type="text" value={taskFormData.title} onChange={e => setTaskFormData({...taskFormData, title: e.target.value})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
-                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {task.platform === 'youtube' && <Youtube size={16} className="text-red-500" />}
-                            {task.platform === 'facebook' && <Facebook size={16} className="text-blue-600" />}
-                            {task.platform === 'telegram' && <Telegram size={16} className="text-sky-500" />}
-                            {task.platform === 'website' && <Globe size={16} className="text-slate-400" />}
-                            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider font-mono">{task.platform}</span>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Reward Amount (৳)</label>
+                          <input type="number" value={taskFormData.reward} onChange={e => setTaskFormData({...taskFormData, reward: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                        <textarea value={taskFormData.description} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3}></textarea>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Task URL</label>
+                          <input type="url" value={taskFormData.url} onChange={e => setTaskFormData({...taskFormData, url: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                          <select value={taskFormData.category} onChange={e => setTaskFormData({...taskFormData, category: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Thumbnail Link (Or Upload below)</label>
+                          <input type="url" value={taskFormData.thumbnail} onChange={e => setTaskFormData({...taskFormData, thumbnail: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Upload Image</label>
+                          <input type="file" accept="image/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Package Plan</label>
+                        <select value={taskFormData.packageId || ''} onChange={e => setTaskFormData({...taskFormData, packageId: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">All Packages (Default)</option>
+                          {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+
+                      <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center gap-2">
+                        <Check size={20} /> Save Job
+                      </button>
+                    </form>
+                  </div>
+               ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tasks.map(task => (
+                      <div key={task.id} className={cn("bg-white rounded-3xl p-6 border border-slate-100 shadow-sm", task.status === 'paused' && "opacity-75")}>
+                        <div className="flex justify-between items-start mb-4">
+                          {task.thumbnail ? (
+                            <img src={task.thumbnail} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                          ) : (
+                            <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
+                              <ImageIcon size={24} />
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <button onClick={() => toggleTaskStatus(task)} className={cn("p-2 rounded-lg transition-colors", task.status === 'available' ? "bg-amber-100 text-amber-600 hover:bg-amber-200" : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200")}>
+                               {task.status === 'available' ? <Pause size={18} /> : <Play size={18} />}
+                            </button>
+                            <button onClick={() => handleTaskEdit(task)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                              <Edit2 size={18} />
+                            </button>
+                            <button onClick={() => handleTaskDelete(task.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
+                              <Trash2 size={18} />
+                            </button>
                           </div>
-                          <a href={task.url} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-600 transition-colors">
-                            <ExternalLink size={16} />
-                          </a>
+                        </div>
+                        <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg mb-2">
+                          {task.category}
+                        </span>
+                        <h3 className="font-black text-lg text-slate-900 mb-1">{task.title}</h3>
+                        <p className="text-slate-500 text-sm line-clamp-2 mb-4">{task.description}</p>
+                        <div className="flex justify-between items-center text-sm font-bold">
+                          <span className="text-blue-600">৳{task.reward}</span>
+                          <span className={task.status === 'available' ? 'text-emerald-500' : 'text-amber-500'}>{task.status}</span>
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {/* Tasks without a package */}
-            {tasks.filter(t => !t.packageId || !plans.find(p => p.id === t.packageId)).length > 0 && (
-              <div>
-                <h2 className="text-xl font-black mb-6 text-slate-800 border-b pb-2">Unassigned Jobs</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {tasks.filter(t => !t.packageId || !plans.find(p => p.id === t.packageId)).map((task) => (
-                      <div key={task.id} className={cn("group bg-white p-6 rounded-3xl border-2 transition-all duration-300 flex flex-col justify-between", task.status === 'paused' ? "border-slate-100 opacity-75" : "border-transparent shadow-sm hover:shadow-xl hover:border-blue-50")}>
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className={cn("px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", task.status === 'available' ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")}>{task.status}</div>
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => handleTaskEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl"><Edit2 size={16} /></button>
-                              <button onClick={() => toggleTaskStatus(task)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl">{task.status === 'available' ? <Pause size={16} /> : <Play size={16} />}</button>
-                              <button onClick={() => handleTaskDelete(task.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>
-                            </div>
-                          </div>
-                          <div className="aspect-video w-full bg-slate-50 rounded-2xl mb-4 overflow-hidden relative">
-                            {task.thumbnail ? (
-                              <img src={task.thumbnail} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center opacity-20">
-                                <ImageIcon size={40} />
-                              </div>
-                            )}
-                            <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm">
-                              {task.category}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <h3 className="font-black text-slate-900 leading-tight line-clamp-1">{task.title}</h3>
-                            <span className="text-lg font-black text-emerald-600">৳{task.reward}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">{task.description}</p>
-                        </div>
-                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {task.platform === 'youtube' && <Youtube size={16} className="text-red-500" />}
-                            {task.platform === 'facebook' && <Facebook size={16} className="text-blue-600" />}
-                            {task.platform === 'telegram' && <Telegram size={16} className="text-sky-500" />}
-                            {task.platform === 'website' && <Globe size={16} className="text-slate-400" />}
-                            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider font-mono">{task.platform}</span>
-                          </div>
-                          <a href={task.url} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-600 transition-colors">
-                            <ExternalLink size={16} />
-                          </a>
-                        </div>
-                      </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {isAddingPlan && (
-            <div className="bg-white p-8 rounded-3xl border border-emerald-100 shadow-2xl animate-in slide-in-from-top duration-300">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-slate-900">{editingPlan ? 'Edit Existing Plan' : 'Configure New Plan'}</h2>
-                <button onClick={() => setIsAddingPlan(false)} className="p-2 text-slate-400 hover:text-slate-900">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <form onSubmit={handlePlanSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Plan Name</label>
-                    <input required type="text" placeholder="e.g. Basic (বেসিক)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" value={planFormData.name} onChange={e => setPlanFormData({...planFormData, name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Price (৳)</label>
-                    <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" value={planFormData.price === 0 ? '' : planFormData.price} onChange={e => setPlanFormData({...planFormData, price: e.target.value ? Number(e.target.value) : 0})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Daily Income (৳)</label>
-                    <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" value={planFormData.dailyIncome === 0 ? '' : planFormData.dailyIncome} onChange={e => setPlanFormData({...planFormData, dailyIncome: e.target.value ? Number(e.target.value) : 0})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Validity (Days)</label>
-                    <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" value={planFormData.validity === 0 ? '' : planFormData.validity} onChange={e => setPlanFormData({...planFormData, validity: e.target.value ? Number(e.target.value) : 0})} />
-                  </div>
-                  <div className="space-y-2 lg:col-span-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Daily Tasks/Ads Count</label>
-                    <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" value={planFormData.taskCount === 0 ? '' : planFormData.taskCount} onChange={e => setPlanFormData({...planFormData, taskCount: e.target.value ? Number(e.target.value) : 0})} />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-4 pt-4">
-                  <button type="button" onClick={() => setIsAddingPlan(false)} className="px-8 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-2xl transition-colors">Discard</button>
-                  <button type="submit" className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all">{editingPlan ? 'Apply Changes' : 'Publish Plan'}</button>
-                </div>
-              </form>
+                    {tasks.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-slate-500 font-bold bg-white rounded-3xl border border-slate-100">No jobs found.</div>
+                    )}
+                 </div>
+               )}
             </div>
           )}
+          {activeTab === 'plans' && (
+            <div className="space-y-6">
+               {isAddingPlan ? (
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm relative">
+                    <button onClick={() => setIsAddingPlan(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+                      <X size={24} />
+                    </button>
+                    <h2 className="text-xl font-bold mb-6">{editingPlan ? 'Edit Plan' : 'Add New Plan'}</h2>
+                    <form onSubmit={handlePlanSubmit} className="space-y-4 max-w-2xl">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Package Name</label>
+                        <input type="text" value={planFormData.name} onChange={e => setPlanFormData({...planFormData, name: e.target.value})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Price (৳)</label>
+                          <input type="number" value={planFormData.price} onChange={e => setPlanFormData({...planFormData, price: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Daily Income (৳)</label>
+                          <input type="number" value={planFormData.dailyIncome} onChange={e => setPlanFormData({...planFormData, dailyIncome: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Validity (Days)</label>
+                          <input type="number" value={planFormData.validity} onChange={e => setPlanFormData({...planFormData, validity: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Daily Tasks Allowed</label>
+                          <input type="number" value={planFormData.taskCount} onChange={e => setPlanFormData({...planFormData, taskCount: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div key={plan.id} className="group bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-black text-xl text-slate-900">{plan.name}</h3>
-                    <p className="text-3xl font-black text-emerald-600 mt-2">৳{plan.price}</p>
+                      <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center gap-2">
+                        <Check size={20} /> Save Plan
+                      </button>
+                    </form>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handlePlanEdit(plan)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl"><Edit2 size={16} /></button>
-                    <button onClick={() => handlePlanDelete(plan.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-                <div className="space-y-3 mt-6 pt-6 border-t border-slate-50">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-slate-500">Daily Income</span>
-                    <span className="font-black text-slate-900">৳{plan.dailyIncome}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-slate-500">Daily Ads</span>
-                    <span className="font-black text-slate-900">{plan.taskCount || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-slate-500">Validity</span>
-                    <span className="font-black text-slate-900">{plan.validity} Days</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-slate-500">Total Income</span>
-                    <span className="font-black text-emerald-600">৳{(plan.dailyIncome * plan.validity).toFixed(0)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+               ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {plans.map(plan => (
+                      <div key={plan.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handlePlanEdit(plan)} className="p-2 bg-slate-100 text-blue-600 rounded-lg hover:bg-slate-200 transition-colors shadow">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => handlePlanDelete(plan.id)} className="p-2 bg-slate-100 text-red-600 rounded-lg hover:bg-slate-200 transition-colors shadow">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <h3 className="font-black text-xl text-slate-900 mb-4">{plan.name}</h3>
+                        <div className="space-y-3 mb-6">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500 font-bold">Price</span>
+                            <span className="font-black text-slate-900">৳{plan.price}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500 font-bold">Daily Income</span>
+                            <span className="font-black text-emerald-600">৳{plan.dailyIncome}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500 font-bold">Validity</span>
+                            <span className="font-black text-slate-900">{plan.validity} Days</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500 font-bold">Daily Tasks</span>
+                            <span className="font-black text-slate-900">{plan.taskCount}</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl text-center text-xs font-bold uppercase tracking-widest break-all px-2">
+                           ID: {plan.id}
+                        </div>
+                      </div>
+                    ))}
+                    {plans.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-slate-500 font-bold bg-white rounded-3xl border border-slate-100">No plans found.</div>
+                    )}
+                 </div>
+               )}
+            </div>
+          )}
         </div>
       )}
     </div>

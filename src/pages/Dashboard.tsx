@@ -73,7 +73,11 @@ export const Dashboard = () => {
       setTeamSize(level1.length + level2.length + level3.length);
 
       const allTeam = [...level1, ...level2, ...level3];
-      const newTeam = allTeam.filter(u => u.activatedAt && u.activatedAt.toDate() >= last24h);
+      const newTeam = allTeam.filter(u => {
+        if (!u.activatedAt) return false;
+        const activatedAtDate = typeof u.activatedAt.toDate === 'function' ? u.activatedAt.toDate() : new Date(u.activatedAt);
+        return activatedAtDate >= last24h;
+      });
       setNewTeamSize(newTeam.length);
 
       // Fetch 24h Earnings
@@ -137,10 +141,10 @@ export const Dashboard = () => {
             <p className="text-amber-700 text-sm mt-1 max-w-lg">Your account is currently inactive. Activate now to unlock premium high-reward tasks, team earnings, and fast withdrawals.</p>
           </div>
           <button 
-            onClick={() => navigate('/activate')}
+            onClick={() => navigate('/activation-payment')}
             className="w-full sm:w-auto bg-amber-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-amber-200 hover:bg-amber-700 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-wider"
           >
-            Activate Account Now
+            Activate Now
           </button>
         </motion.div>
       )}

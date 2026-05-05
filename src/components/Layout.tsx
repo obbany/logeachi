@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useAuth } from '../context/AuthContext';
 
 export const Layout = () => {
+  const { userData } = useAuth();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (

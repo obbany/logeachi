@@ -9,6 +9,7 @@ import { TeamPage } from './pages/TeamPage';
 import { WithdrawPage } from './pages/WithdrawPage';
 import { ActivationPage } from './pages/ActivationPage';
 import { PlanPaymentPage } from './pages/PlanPaymentPage';
+import { AccountActivationPaymentPage } from './pages/AccountActivationPaymentPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -127,7 +128,8 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="activate" element={<ActivationPage />} />
-            <Route path="payment" element={<PlanPaymentPage />} />
+            <Route path="payment" element={<ActiveRoute><PlanPaymentPage /></ActiveRoute>} />
+            <Route path="activation-payment" element={<AccountActivationPaymentPage />} />
             <Route path="tasks" element={<ActiveRoute><TasksPage /></ActiveRoute>} />
             <Route path="team" element={<ActiveRoute><TeamPage /></ActiveRoute>} />
             <Route path="withdraw" element={<ActiveRoute><WithdrawPage /></ActiveRoute>} />
