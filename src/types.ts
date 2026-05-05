@@ -32,6 +32,7 @@ export interface Task {
   status: 'available' | 'paused';
   createdAt: string;
   packageId?: string;
+  type?: 'regular' | 'bonus';
 }
 
 export interface Submission {

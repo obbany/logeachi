@@ -107,14 +107,23 @@ export const TasksPage = () => {
         });
         const activePlan = plansData.find(p => p.id === activeActivation?.packageId);
 
-        // Fetch Available Tasks (All available tasks for this package)
+        // Fetch Available Tasks (Active plan + Bonus)
         const tasksQuery = query(
           collection(db, 'tasks'), 
-          where('status', '==', 'available'),
-          where('packageId', '==', activePlan?.id || 'none')
+          where('status', '==', 'available')
         );
         const tasksSnap = await getDocs(tasksQuery);
         let taskData = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+        
+        // Filter tasks:
+        // If user has an active package, show ONLY tasks for that package.
+        // If user has NO active package, show ONLY bonus (Free) tasks.
+        if (activePlan) {
+          taskData = taskData.filter(t => t.packageId === activePlan.id);
+        } else {
+          taskData = taskData.filter(t => t.type === 'bonus');
+        }
+        
         setTasks(taskData);
 
         // Fetch User's Submissions (General History)
@@ -176,8 +185,8 @@ export const TasksPage = () => {
     
     setIsSubmitting(true);
     try {
-      // Use the local count for check instead of re-fetching during write
-      const nextCount = completedTodayCount + 1;
+      const isBonus = task.type === 'bonus';
+      const nextCount = isBonus ? completedTodayCount : completedTodayCount + 1;
       const allowedCount = taskLimit;
 
       const submissionData = {
@@ -191,26 +200,28 @@ export const TasksPage = () => {
       
       const submissionRef = await addDoc(collection(db, 'submissions'), submissionData);
       
-      await addDoc(collection(db, 'daily_task_completions'), {
-        userId: userData.uid,
-        taskId: task.id,
-        date: new Date().toISOString().split('T')[0],
-        createdAt: new Date().toISOString()
-      });
-
-      if (nextCount >= allowedCount) {
-        const nextAvailableAt = Date.now() + 24 * 60 * 60 * 1000;
-        await setDoc(doc(db, 'user_task_status', userData.uid), {
-          nextAvailableAt,
-          updatedAt: serverTimestamp()
+      if (!isBonus) {
+        await addDoc(collection(db, 'daily_task_completions'), {
+          userId: userData.uid,
+          taskId: task.id,
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
         });
-        setBlocked(true);
-        setResetAt(nextAvailableAt);
+
+        if (nextCount >= allowedCount) {
+          const nextAvailableAt = Date.now() + 24 * 60 * 60 * 1000;
+          await setDoc(doc(db, 'user_task_status', userData.uid), {
+            nextAvailableAt,
+            updatedAt: serverTimestamp()
+          });
+          setBlocked(true);
+          setResetAt(nextAvailableAt);
+        }
+        setCompletedTodayCount(nextCount);
       }
 
-      setCompletedTodayCount(nextCount);
-
       // 2. Add Transaction record
+
       await addDoc(collection(db, 'transactions'), {
         userId: userData.uid,
         amount: task.reward,
@@ -252,7 +263,9 @@ export const TasksPage = () => {
   };
 
   const remainingTasksCount = Math.max(0, taskLimit - completedTodayCount);
-  const availableTasks = tasks.filter(t => !submissions[t.id]).slice(0, remainingTasksCount);
+  const regularTasks = blocked ? [] : tasks.filter(t => t.type !== 'bonus' && !submissions[t.id]).slice(0, remainingTasksCount);
+  const bonusTasks = tasks.filter(t => t.type === 'bonus' && !submissions[t.id]);
+  const availableTasks = [...regularTasks, ...bonusTasks];
   const completedTasks = tasks.filter(t => submissions[t.id]);
 
   if (loading) {
@@ -303,87 +316,94 @@ export const TasksPage = () => {
         </div>
 
       {activeTab === 'available' ? (
-        blocked ? (
-          <div className="text-center py-10 bg-white rounded-3xl border border-blue-100 shadow-sm mb-8">
-             <Clock className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-pulse" />
-             <h2 className="text-xl font-black text-slate-900 mb-1">Daily Limit Reached</h2>
-             <p className="text-slate-500 mb-4 font-medium text-sm">Your tasks will reset in:</p>
-             <div className="text-3xl font-black text-blue-600 font-mono">
-               {Math.floor(timeLeft / 3600)}:{Math.floor((timeLeft % 3600) / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-             </div>
-          </div>
-        ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {availableTasks.map((task) => (
-            <motion.div 
-              layoutId={task.id}
-              key={task.id}
-              className="group bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
-            >
-              <div className="aspect-video bg-slate-100 relative overflow-hidden">
-                {task.thumbnail ? (
-                  <img src={task.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <PlatformIcon platform={task.platform} size={40} />
-                  </div>
-                )}
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
-                  <PlatformIcon platform={task.platform} size={14} />
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-700">{task.platform}</span>
-                </div>
-                <div className="absolute top-3 right-3 bg-emerald-600 px-3 py-1.5 rounded-lg text-white font-bold text-xs shadow-lg">
-                  +৳{task.reward}
-                </div>
-              </div>
-
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-1 mb-2">{task.title}</h3>
-                  <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">
-                    {task.description}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  {isTimerRunning && selectedTaskId === task.id ? (
-                    <div className="bg-blue-50 text-blue-700 p-3 rounded-xl flex items-center justify-between font-bold text-xs animate-pulse">
-                      <div className="flex items-center gap-2">
-                        <Clock size={16} />
-                        Wait for verification...
-                      </div>
-                      <span className="text-sm font-black">{timeLeft}s</span>
-                    </div>
-                  ) : isClaimReady && selectedTaskId === task.id ? (
-                    <button 
-                      onClick={() => handleClaimReward(task)}
-                      disabled={isSubmitting}
-                      className="w-full bg-emerald-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all scale-[1.02]"
-                    >
-                      {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <>Claim Reward ৳{task.reward} <Check size={16} /></>}
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => handleStartTask(task)}
-                      disabled={userData?.status !== 'active' || isTimerRunning}
-                      className="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-50"
-                    >
-                      {userData?.status !== 'active' ? "Activate Account to Work" : "Start Job (15s)"}
-                      <ArrowRight size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-          {availableTasks.length === 0 && (
-            <div className="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100 text-center">
-              <Clock className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-              <p className="text-slate-400 font-bold">No tasks available right now. Check back soon!</p>
+        <div className="space-y-6">
+          {blocked && (
+            <div className="text-center py-10 bg-white rounded-3xl border border-blue-100 shadow-sm mb-4">
+               <Clock className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-pulse" />
+               <h2 className="text-xl font-black text-slate-900 mb-1">Daily Limit Reached</h2>
+               <p className="text-slate-500 mb-4 font-medium text-sm">Your regular tasks will reset in:</p>
+               <div className="text-3xl font-black text-blue-600 font-mono">
+                 {Math.floor(timeLeft / 3600)}:{Math.floor((timeLeft % 3600) / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+               </div>
             </div>
           )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {availableTasks.map((task) => (
+              <motion.div 
+                layoutId={task.id}
+                key={task.id}
+                className="group bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+              >
+                <div className="aspect-video bg-slate-100 relative overflow-hidden">
+                  {task.thumbnail ? (
+                    <img src={task.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <PlatformIcon platform={task.platform} size={40} />
+                    </div>
+                  )}
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                    <PlatformIcon platform={task.platform} size={14} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-700">{task.platform}</span>
+                  </div>
+                  {task.type === 'bonus' && (
+                    <div className="absolute bottom-3 left-3 bg-yellow-500/90 backdrop-blur px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                      <span className="text-[10px] text-white uppercase font-bold tracking-wider">Free Bonus Job</span>
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3 bg-emerald-600 px-3 py-1.5 rounded-lg text-white font-bold text-xs shadow-lg">
+                    +৳{task.reward}
+                  </div>
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-1 mb-2">{task.title}</h3>
+                    <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">
+                      {task.description}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {isTimerRunning && selectedTaskId === task.id ? (
+                      <div className="bg-blue-50 text-blue-700 p-3 rounded-xl flex items-center justify-between font-bold text-xs animate-pulse">
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} />
+                          Wait for verification...
+                        </div>
+                        <span className="text-sm font-black">{timeLeft}s</span>
+                      </div>
+                    ) : isClaimReady && selectedTaskId === task.id ? (
+                      <button 
+                        onClick={() => handleClaimReward(task)}
+                        disabled={isSubmitting}
+                        className="w-full bg-emerald-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all scale-[1.02]"
+                      >
+                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <>Claim Reward ৳{task.reward} <Check size={16} /></>}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleStartTask(task)}
+                        disabled={userData?.status !== 'active' || isTimerRunning}
+                        className="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-50"
+                      >
+                        {userData?.status !== 'active' ? "Activate Account to Work" : "Start Job (15s)"}
+                        <ArrowRight size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+            {availableTasks.length === 0 && (
+              <div className="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100 text-center">
+                <Clock className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                <p className="text-slate-400 font-bold">No tasks available right now. Check back soon!</p>
+              </div>
+            )}
+          </div>
         </div>
-        )
       ) : (
         <div className="space-y-4">
           {blocked && (

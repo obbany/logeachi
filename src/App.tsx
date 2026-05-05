@@ -19,8 +19,11 @@ import { ManageWithdrawals } from './pages/admin/ManageWithdrawals';
 import { ManageSubmissions } from './pages/admin/ManageSubmissions';
 import { ManageReferral } from './pages/admin/ManageReferral';
 import { ManageSettings } from './pages/admin/ManageSettings';
+import { ManageBonus } from './pages/admin/ManageBonus';
 import { ManageActivations } from './pages/admin/ManageActivations';
 import { ManagePlanRequests } from './pages/admin/ManagePlanRequests';
+import { ManageSupport } from './pages/admin/ManageSupport';
+import { SupportPage } from './pages/SupportPage';
 import { ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from './lib/firebase';
@@ -135,6 +138,7 @@ export default function App() {
             <Route path="withdraw" element={<ActiveRoute><WithdrawPage /></ActiveRoute>} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="support" element={<SupportPage />} />
           </Route>
 
           {/* Admin Routes */}
@@ -150,6 +154,8 @@ export default function App() {
             <Route path="submissions" element={<ManageSubmissions />} />
             <Route path="referral" element={<ManageReferral />} />
             <Route path="settings" element={<ManageSettings />} />
+            <Route path="support" element={<ManageSupport />} />
+            <Route path="bonus" element={<ManageBonus />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -54,7 +54,8 @@ export const Dashboard = () => {
     const fetchTeamData = async () => {
       if (!userData?.uid) return;
       
-      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
 
       const snap = await getDocs(query(collection(db, 'users'), where('status', '==', 'active')));
       const allUsers = snap.docs.map(doc => ({ ...doc.data() }));
@@ -76,7 +77,7 @@ export const Dashboard = () => {
       const newTeam = allTeam.filter(u => {
         if (!u.activatedAt) return false;
         const activatedAtDate = typeof u.activatedAt.toDate === 'function' ? u.activatedAt.toDate() : new Date(u.activatedAt);
-        return activatedAtDate >= last24h;
+        return activatedAtDate >= todayMidnight;
       });
       setNewTeamSize(newTeam.length);
 
@@ -92,7 +93,7 @@ export const Dashboard = () => {
           const data = d.data();
           if (!data.createdAt) return false;
           const createdAt = typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate() : new Date(data.createdAt);
-          return createdAt >= last24h;
+          return createdAt >= todayMidnight;
         })
         .reduce((sum, d) => sum + (d.data().amount || 0), 0);
       

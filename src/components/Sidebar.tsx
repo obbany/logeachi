@@ -44,6 +44,8 @@ const adminNavItems = [
   },
   { icon: Share2, label: 'Referral Settings', path: '/admin/referral' },
   { icon: Settings, label: 'Payment Settings', path: '/admin/settings' },
+  { icon: MessageCircle, label: 'Support Settings', path: '/admin/support' },
+  { icon: Coins, label: 'Account Create Bonus', path: '/admin/bonus' },
 ];
 
 export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
@@ -52,6 +54,56 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const [expandedMenus, setExpandedMenus] = React.useState<Record<string, boolean>>({});
   const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
   const isAdminView = location.pathname.startsWith('/admin');
+
+  const [activePlanName, setActivePlanName] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchPlan = async () => {
+      if (!userData || isAdminView) return;
+      try {
+        const { getDocs, query, collection, where } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        
+        const qActivations = query(collection(db, 'activations'), where('userId', '==', userData.uid));
+        const qPurchases = query(collection(db, 'plan_purchases'), where('userId', '==', userData.uid));
+        const [hSnapA, hSnapP, plansSnap] = await Promise.all([
+          getDocs(qActivations),
+          getDocs(qPurchases),
+          getDocs(collection(db, 'packages'))
+        ]);
+        
+        const history = [
+          ...hSnapA.docs.map(d => ({ ...d.data() })),
+          ...hSnapP.docs.map(d => ({ ...d.data() }))
+        ];
+        const plansData = plansSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const activeActivation = history.find(h => {
+          if (h.status !== 'approved') return false;
+          const plan = plansData.find((p: any) => p.id === h.packageId);
+          if (!plan) return false;
+          const createdAt = new Date(h.createdAt).getTime();
+          const validity = (plan as any).validity * 24 * 60 * 60 * 1000;
+          return (createdAt + validity) > Date.now();
+        });
+        
+        if (activeActivation) {
+          const plan = plansData.find((p: any) => p.id === activeActivation.packageId);
+          if (plan) {
+            setActivePlanName((plan as any).name);
+          }
+        } else if (userData.status === 'active') {
+          setActivePlanName('Free Active');
+        } else {
+          setActivePlanName('Inactive');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchPlan();
+  }, [userData, isAdminView]);
+
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev => ({ ...prev, [label]: !prev[label] }));
@@ -84,8 +136,8 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </div>
               <h2 className="text-xl font-bold text-slate-900 leading-tight">{userData?.name || 'User'}</h2>
               <p className="text-xs text-slate-400 mt-1 font-black tracking-widest bg-slate-100 px-3 py-1 rounded-full uppercase">User ID: {userData?.shortId || '......'}</p>
-              <p className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-widest">
-                Account Level: <span className="text-indigo-600">{userData?.role === 'admin' ? 'ELITE ADMIN' : 'MEMBER'}</span>
+              <p className="text-[10px] font-black mt-2 uppercase tracking-widest bg-indigo-100/50 text-indigo-700 px-3 py-1 rounded-full">
+                Account Level: <span>{activePlanName || '...'}</span>
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
                 Reffer ID: <span className="font-mono text-indigo-600">{userData?.referralCode || 'N/A'}</span>

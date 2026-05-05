@@ -49,7 +49,8 @@ export const ManageTasks = () => {
     
     // Fetch Tasks
     const snap = await getDocs(collection(db, 'tasks'));
-    setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
+    const allTasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+    setTasks(allTasks.filter(t => t.type !== 'bonus'));
     
     // Fetch Plans
     const plansSnap = await getDocs(collection(db, 'packages'));

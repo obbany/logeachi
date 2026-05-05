@@ -30,6 +30,8 @@ export const ActivationPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingRequest, setExistingRequest] = useState<Activation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activePlan, setActivePlan] = useState<PackagePlan | null>(null);
+  const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<'apply' | 'history'>('apply');
   const [history, setHistory] = useState<Activation[]>([]);
@@ -54,17 +56,44 @@ export const ActivationPage = () => {
 
       if (userData) {
         const qActivations = query(collection(db, 'activations'), where('userId', '==', userData.uid));
+        const qPurchases = query(collection(db, 'plan_purchases'), where('userId', '==', userData.uid));
         
-        const hSnapActivations = await getDocs(qActivations);
+        const [hSnapActivations, hSnapPurchases] = await Promise.all([
+          getDocs(qActivations),
+          getDocs(qPurchases)
+        ]);
 
-        const hData = hSnapActivations.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Activation))
-          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        const hData = [
+          ...hSnapActivations.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activation)),
+          ...hSnapPurchases.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activation))
+        ].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         
         setHistory(hData);
 
         const pending = hData.find(a => a.status === 'pending');
         setExistingRequest(pending || null);
+
+        const active = hData.find(h => {
+          if (h.status !== 'approved') return false;
+          const plan = plansData.find(p => p.id === h.packageId);
+          if (!plan) return false;
+          const createdAt = new Date(h.createdAt).getTime();
+          const validity = plan.validity * 24 * 60 * 60 * 1000;
+          return (createdAt + validity) > Date.now();
+        });
+        
+        if (active) {
+          const plan = plansData.find(p => p.id === active.packageId);
+          if (plan) {
+            setActivePlan(plan);
+            const createdAt = new Date(active.createdAt).getTime();
+            const expiresAt = createdAt + (plan.validity * 24 * 60 * 60 * 1000);
+            setPlanExpiresAt(expiresAt);
+          }
+        } else {
+          setActivePlan(null);
+          setPlanExpiresAt(null);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -157,6 +186,35 @@ export const ActivationPage = () => {
                          Activate Now
                       </button>
                     </div>
+                  ) : activePlan ? (
+                    <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-3xl p-6 shadow-xl shadow-emerald-200 mb-6 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-50">
+                        <ShieldCheck size={80} />
+                      </div>
+                      <div className="relative z-10">
+                        <h3 className="text-2xl font-black mb-1">{activePlan.name} Plan Active</h3>
+                        <p className="text-emerald-100 text-sm font-medium mb-6">Your premium membership is active.</p>
+                        
+                        <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm space-y-3">
+                           <div className="flex justify-between items-center text-xs font-bold">
+                             <span className="text-emerald-100 uppercase tracking-widest">Total Validity</span>
+                             <span className="text-white text-base">{activePlan.validity} Days</span>
+                           </div>
+                           <div className="flex justify-between items-center text-xs font-bold">
+                             <span className="text-emerald-100 uppercase tracking-widest">Days Remaining</span>
+                             <span className="text-white text-base">
+                               {Math.max(0, Math.ceil(((planExpiresAt || 0) - Date.now()) / (1000 * 60 * 60 * 24)))} Days
+                             </span>
+                           </div>
+                           <div className="flex justify-between items-center text-xs font-bold">
+                             <span className="text-emerald-100 uppercase tracking-widest">Expires On</span>
+                             <span className="text-white text-sm">
+                               {planExpiresAt ? new Date(planExpiresAt).toLocaleDateString() : 'N/A'}
+                             </span>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="bg-emerald-50 text-emerald-700 rounded-3xl p-6 text-center border-2 border-dashed border-emerald-200 mb-6">
                       <ShieldCheck size={32} className="mx-auto mb-2" />
@@ -196,13 +254,21 @@ export const ActivationPage = () => {
                               onClick={() => {
                                 if (userData?.status !== 'active') {
                                   alert('You must activate your account first!');
+                                } else if (activePlan) {
+                                  alert('You already have an active premium membership. Please wait until it expires.');
                                 } else {
                                   navigate('/payment', { state: { plan } });
                                 }
                               }}
-                              className="w-full mt-5 bg-slate-900 text-white font-black py-3 rounded-xl transition-all hover:bg-slate-800 shadow-lg text-[10px] uppercase tracking-widest disabled:opacity-50"
+                              className={cn(
+                                "w-full mt-5 font-black py-3 rounded-xl transition-all shadow-lg text-[10px] uppercase tracking-widest disabled:opacity-50",
+                                activePlan 
+                                  ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
+                                  : "bg-slate-900 text-white hover:bg-slate-800"
+                              )}
+                              disabled={!!activePlan}
                             >
-                              Purchase Plan
+                              {activePlan ? 'Membership Active' : 'Purchase Plan'}
                             </button>
                           </div>
                         </div>
