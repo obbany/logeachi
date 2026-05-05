@@ -32,7 +32,6 @@ const adminNavItems = [
   { icon: LayoutDashboard, label: 'Admin Home', path: '/admin/dashboard' },
   { icon: Users, label: 'Users', path: '/admin/users' },
   { icon: Briefcase, label: 'Tasks', path: '/admin/tasks' },
-  { icon: ClipboardCheck, label: 'Submissions', path: '/admin/submissions' },
   { icon: Coins, label: 'Withdrawals', path: '/admin/withdrawals' },
   { 
     icon: UserCheck, 

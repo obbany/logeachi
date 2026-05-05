@@ -14,7 +14,6 @@ export const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeTasks: 0,
-    pendingSubmissions: 0,
     pendingWithdrawals: 0,
     pendingActivations: 0,
     totalVolume: 0
@@ -24,7 +23,6 @@ export const AdminDashboard = () => {
     const fetchStats = async () => {
       const usersSnap = await getDocs(collection(db, 'users'));
       const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('status', '==', 'available')));
-      const subsSnap = await getDocs(query(collection(db, 'submissions'), where('status', '==', 'pending')));
       const withdrawsSnap = await getDocs(query(collection(db, 'withdrawals'), where('status', '==', 'pending')));
       const actsSnap = await getDocs(query(collection(db, 'activations'), where('status', '==', 'pending')));
       
@@ -36,7 +34,6 @@ export const AdminDashboard = () => {
       setStats({
         totalUsers: usersSnap.size,
         activeTasks: tasksSnap.size,
-        pendingSubmissions: subsSnap.size,
         pendingWithdrawals: withdrawsSnap.size,
         pendingActivations: actsSnap.size,
         totalVolume: volume
@@ -49,7 +46,6 @@ export const AdminDashboard = () => {
     { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'bg-blue-500' },
     { label: 'Active Tasks', value: stats.activeTasks, icon: Briefcase, color: 'bg-green-500' },
     { label: 'Pending Activations', value: stats.pendingActivations, icon: AlertCircle, color: 'bg-amber-500' },
-    { label: 'Pending Subs', value: stats.pendingSubmissions, icon: CheckCircle, color: 'bg-orange-500' },
     { label: 'Pending Withdrawals', value: stats.pendingWithdrawals, icon: CreditCard, color: 'bg-purple-500' },
   ];
 

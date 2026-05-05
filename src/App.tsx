@@ -16,7 +16,6 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { ManageUsers } from './pages/admin/ManageUsers';
 import { ManageTasks } from './pages/admin/ManageTasks';
 import { ManageWithdrawals } from './pages/admin/ManageWithdrawals';
-import { ManageSubmissions } from './pages/admin/ManageSubmissions';
 import { ManageReferral } from './pages/admin/ManageReferral';
 import { ManageSettings } from './pages/admin/ManageSettings';
 import { ManageBonus } from './pages/admin/ManageBonus';
@@ -151,7 +150,6 @@ export default function App() {
             <Route path="withdrawals" element={<ManageWithdrawals />} />
             <Route path="activations" element={<ManageActivations />} />
             <Route path="plan-requests" element={<ManagePlanRequests />} />
-            <Route path="submissions" element={<ManageSubmissions />} />
             <Route path="referral" element={<ManageReferral />} />
             <Route path="settings" element={<ManageSettings />} />
             <Route path="support" element={<ManageSupport />} />
