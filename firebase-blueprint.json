@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and balance",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "phone": { "type": "string", "description": "User phone number (used as doc ID)" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "balance": { "type": "number" },
+        "totalWithdraw": { "type": "number" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" },
+        "country": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "phone", "name", "status", "balance", "totalWithdraw", "referralCode", "role", "createdAt"]
+    },
+    "Task": {
+      "title": "Job Task",
+      "description": "Tasks that users can complete for rewards",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "reward": { "type": "number" },
+        "platform": { "type": "string" },
+        "category": { "type": "string" },
+        "thumbnail": { "type": "string", "description": "Optional image URL for the task" },
+        "url": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "reward", "platform", "url", "status", "createdAt"]
+    },
+    "Submission": {
+      "title": "Task Submission",
+      "description": "User proof of task completion",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "User identifier (phone or uid)" },
+        "taskId": { "type": "string" },
+        "screenshotUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "taskId", "screenshotUrl", "status", "createdAt"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "User request to withdraw balance",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "method", "phone", "status", "createdAt"]
+    },
+    "Config": {
+      "title": "Site Configuration",
+      "description": "Global settings for the application",
+      "type": "object",
+      "properties": {
+        "bkashNumber": { "type": "string" },
+        "nagadNumber": { "type": "string" },
+        "rocketNumber": { "type": "string" },
+        "activationFee": { "type": "number" },
+        "minWithdraw": { "type": "number" }
+      }
+    },
+    "Activation": {
+      "title": "Activation Request",
+      "description": "User submission for account activation payment",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "phone": { "type": "string" },
+        "method": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "phone", "method", "transactionId", "amount", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{phone}": {
+      "schema": "User",
+      "description": "User profiles stored by phone number"
+    },
+    "tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Job tasks available for users"
+    },
+    "submissions/{subId}": {
+      "schema": "Submission",
+      "description": "User task submissions"
+    },
+    "withdrawals/{withdrawId}": {
+      "schema": "Withdrawal",
+      "description": "Withdrawal requests"
+    },
+    "settings/global": {
+      "schema": "Config",
+      "description": "Global settings like payment numbers"
+    },
+    "activations/{activationId}": {
+      "schema": "Activation",
+      "description": "Account activation requests"
+    }
+  }
+}
