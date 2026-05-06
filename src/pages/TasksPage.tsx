@@ -29,6 +29,29 @@ const PlatformIcon = ({ platform, size = 18 }: { platform: string, size?: number
   }
 };
 
+const LiveCountdown = ({ targetDate }: { targetDate: number }) => {
+  const [timeLeft, setTimeLeft] = useState(Math.max(0, targetDate - Date.now()));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(Math.max(0, targetDate - Date.now()));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (timeLeft <= 0) return <span className="text-emerald-500 font-bold">Refresh page to see task!</span>;
+
+  const h = Math.floor(timeLeft / 3600000);
+  const m = Math.floor((timeLeft % 3600000) / 60000);
+  const s = Math.floor((timeLeft % 60000) / 1000);
+
+  return (
+    <span className="font-mono tabular-nums">
+      {h.toString().padStart(2, '0')}:{m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+    </span>
+  );
+};
+
 export const TasksPage = () => {
   const { userData, setUserData } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -71,15 +94,8 @@ export const TasksPage = () => {
       try {
         setLoading(true);
 
-        // Fetch User Cooldown Status
-        const statusDoc = await getDoc(doc(db, 'user_task_status', userData.uid));
-        if (statusDoc.exists()) {
-          const status = statusDoc.data();
-          if (status.nextAvailableAt > Date.now()) {
-            setBlocked(true);
-            setResetAt(status.nextAvailableAt);
-          }
-        }
+        // We don't fetch user cooldown status anymore.
+        // Each task has its own 24 hour cooldown based on submission time.
 
         // Fetch All Plans
         const plansSnap = await getDocs(collection(db, 'packages'));
@@ -116,10 +132,10 @@ export const TasksPage = () => {
         let taskData = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
         
         // Filter tasks:
-        // If user has an active package, show ONLY tasks for that package.
+        // If user has an active package, show tasks for that package OR tasks marked for all packages.
         // If user has NO active package, show ONLY bonus (Free) tasks.
         if (activePlan) {
-          taskData = taskData.filter(t => t.packageId === activePlan.id);
+          taskData = taskData.filter(t => (t.packageId === activePlan.id || !t.packageId) && t.type !== 'bonus');
         } else {
           taskData = taskData.filter(t => t.type === 'bonus');
         }
@@ -132,7 +148,11 @@ export const TasksPage = () => {
         const subMap: Record<string, Submission> = {};
         subSnap.docs.forEach(doc => {
           const data = doc.data() as Submission;
-          subMap[data.taskId] = { id: doc.id, ...data };
+          const existingTime = subMap[data.taskId] ? new Date(subMap[data.taskId].createdAt).getTime() : 0;
+          const newTime = new Date(data.createdAt).getTime();
+          if (newTime >= existingTime) {
+            subMap[data.taskId] = { id: doc.id, ...data };
+          }
         });
         setSubmissions(subMap);
 
@@ -186,9 +206,7 @@ export const TasksPage = () => {
     setIsSubmitting(true);
     try {
       const isBonus = task.type === 'bonus';
-      const nextCount = isBonus ? completedTodayCount : completedTodayCount + 1;
-      const allowedCount = taskLimit;
-
+      
       const submissionData = {
         userId: userData.uid,
         userShortId: userData.shortId || 'N/A',
@@ -207,18 +225,10 @@ export const TasksPage = () => {
           date: new Date().toISOString().split('T')[0],
           createdAt: new Date().toISOString()
         });
-
-        if (nextCount >= allowedCount) {
-          const nextAvailableAt = Date.now() + 24 * 60 * 60 * 1000;
-          await setDoc(doc(db, 'user_task_status', userData.uid), {
-            nextAvailableAt,
-            updatedAt: serverTimestamp()
-          });
-          setBlocked(true);
-          setResetAt(nextAvailableAt);
-        }
-        setCompletedTodayCount(nextCount);
+        setCompletedTodayCount(prev => prev + 1);
       }
+
+      // No longer using global blocked state. Tasks reset individually.
 
       // 2. Add Transaction record
 
@@ -262,11 +272,18 @@ export const TasksPage = () => {
     }
   };
 
-  const remainingTasksCount = Math.max(0, taskLimit - completedTodayCount);
-  const regularTasks = blocked ? [] : tasks.filter(t => t.type !== 'bonus' && !submissions[t.id]).slice(0, remainingTasksCount);
-  const bonusTasks = tasks.filter(t => t.type === 'bonus' && !submissions[t.id]);
+  const isSubmissionActive = (task: Task) => {
+    const sub = submissions[task.id];
+    if (!sub) return false;
+    const subTime = new Date(sub.createdAt).getTime();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    return (Date.now() - subTime) < twentyFourHours;
+  };
+
+  const regularTasks = tasks.filter(t => t.type !== 'bonus' && !isSubmissionActive(t));
+  const bonusTasks = tasks.filter(t => t.type === 'bonus' && !isSubmissionActive(t));
   const availableTasks = [...regularTasks, ...bonusTasks];
-  const completedTasks = tasks.filter(t => submissions[t.id]);
+  const completedTasks = tasks.filter(t => isSubmissionActive(t));
 
   if (loading) {
     return (
@@ -317,14 +334,17 @@ export const TasksPage = () => {
 
       {activeTab === 'available' ? (
         <div className="space-y-6">
-          {blocked && (
-            <div className="text-center py-10 bg-white rounded-3xl border border-blue-100 shadow-sm mb-4">
-               <Clock className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-pulse" />
-               <h2 className="text-xl font-black text-slate-900 mb-1">Daily Limit Reached</h2>
-               <p className="text-slate-500 mb-4 font-medium text-sm">Your regular tasks will reset in:</p>
-               <div className="text-3xl font-black text-blue-600 font-mono">
-                 {Math.floor(timeLeft / 3600)}:{Math.floor((timeLeft % 3600) / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-               </div>
+          {availableTasks.length === 0 && (
+            <div className="text-center py-10 bg-white rounded-3xl border border-slate-100 shadow-sm mb-4">
+               <Clock className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+               <h2 className="text-xl font-black text-slate-900 mb-1">No Jobs Available</h2>
+               <p className="text-slate-500 font-medium text-sm mb-4">Please check back later. Completed jobs will reappear 24 hours after completion.</p>
+               {completedTasks.length > 0 && (
+                 <div className="max-w-xs mx-auto bg-blue-50 border border-blue-100 text-blue-700 py-3 px-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 shadow-sm">
+                   <div className="text-xs text-blue-600/80 uppercase tracking-widest uppercase">Next job available in</div>
+                   <div className="text-2xl"><LiveCountdown targetDate={Math.min(...completedTasks.map(t => new Date(submissions[t.id]?.createdAt || 0).getTime() + (24 * 60 * 60 * 1000)))} /></div>
+                 </div>
+               )}
             </div>
           )}
 
@@ -396,31 +416,19 @@ export const TasksPage = () => {
                 </div>
               </motion.div>
             ))}
-            {availableTasks.length === 0 && (
-              <div className="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100 text-center">
-                <Clock className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                <p className="text-slate-400 font-bold">No tasks available right now. Check back soon!</p>
-              </div>
-            )}
+
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          {blocked && (
-             <div className="text-center py-10 bg-white rounded-3xl border border-blue-100 shadow-sm mb-8">
-             <Clock className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-pulse" />
-             <h2 className="text-xl font-black text-slate-900 mb-1">Daily Limit Reached</h2>
-             <p className="text-slate-500 mb-4 font-medium text-sm">Your tasks will reset in:</p>
-             <div className="text-3xl font-black text-blue-600 font-mono">
-               {Math.floor(timeLeft / 3600)}:{Math.floor((timeLeft % 3600) / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-             </div>
-          </div>
-          )}
           {completedTasks.sort((a, b) => {
               const dateA = new Date(submissions[a.id]?.createdAt || 0).getTime();
               const dateB = new Date(submissions[b.id]?.createdAt || 0).getTime();
               return dateB - dateA;
-          }).map(task => (
+          }).map(task => {
+            const subTime = new Date(submissions[task.id]?.createdAt || 0).getTime();
+            const availableAt = new Date(subTime + (24 * 60 * 60 * 1000));
+            return (
             <div key={task.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4 w-full">
                 <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
@@ -428,7 +436,8 @@ export const TasksPage = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900 line-clamp-1">{task.title}</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Completed on: {new Date(submissions[task.id]?.createdAt).toLocaleDateString()}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(submissions[task.id]?.createdAt).toLocaleString()}</p>
+                  <div className="text-[10px] text-blue-500 font-bold mt-0.5 flex flex-wrap items-center gap-1">Available Again In: <LiveCountdown targetDate={availableAt.getTime()} /></div>
                 </div>
               </div>
               <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
@@ -441,8 +450,9 @@ export const TasksPage = () => {
                 </div>
               </div>
             </div>
-          ))}
-          {completedTasks.length === 0 && !blocked && (
+            );
+          })}
+          {completedTasks.length === 0 && (
             <div className="py-20 text-center">
               <History className="w-12 h-12 text-slate-200 mx-auto mb-4" />
               <p className="text-slate-400 font-bold">You haven't completed any jobs yet.</p>

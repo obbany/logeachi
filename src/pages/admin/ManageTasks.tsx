@@ -316,7 +316,10 @@ export const ManageTasks = () => {
                           {task.category}
                         </span>
                         <h3 className="font-black text-lg text-slate-900 mb-1">{task.title}</h3>
-                        <p className="text-slate-500 text-sm line-clamp-2 mb-4">{task.description}</p>
+                        <p className="text-slate-500 text-sm line-clamp-2 mb-2">{task.description}</p>
+                        <div className="text-xs font-bold text-indigo-500 mb-4 bg-indigo-50 rounded-lg px-3 py-1.5 inline-flex">
+                           Package: {task.packageId ? plans.find(p => p.id === task.packageId)?.name || 'Unknown Package' : 'All Packages'}
+                        </div>
                         <div className="flex justify-between items-center text-sm font-bold">
                           <span className="text-blue-600">৳{task.reward}</span>
                           <span className={task.status === 'available' ? 'text-emerald-500' : 'text-amber-500'}>{task.status}</span>
