@@ -12,7 +12,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { db } from '../../lib/firebase';
-import { collection, query, orderBy, onSnapshot, getDocs, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDocs, doc, updateDoc, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
@@ -119,6 +119,14 @@ export const ManagePlanRequests = () => {
         // but it's better to update the correct document ID. Since user IDs are phone numbers:
         const targetRef = req.userId.includes(req.userPhone) || !req.userPhone ? userRef : userPhoneRef || userRef;
         
+        // Read user data to verify status before approving to see if we should distribute commission
+        const userSnap = await getDoc(targetRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const { distributeCommission } = await import('../../lib/referral');
+          await distributeCommission(userData);
+        }
+
         let planExpiresAt = new Date();
         planExpiresAt.setDate(planExpiresAt.getDate() + (req.validity || 30));
         

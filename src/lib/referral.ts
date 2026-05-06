@@ -10,7 +10,7 @@ export const distributeCommission = async (newUser: any) => {
         const commissions = settingsDoc.exists() ? settingsDoc.data() : { gen1: 50, gen2: 30, gen3: 20 };
         console.log("Distributing commissions with settings:", commissions);
 
-        let currentRefCode = newUser.referredBy;
+        let currentRefCode = newUser.referredBy?.toUpperCase();
         
         for (let i = 1; i <= 3; i++) {
             if (!currentRefCode) break;
@@ -41,7 +41,7 @@ export const distributeCommission = async (newUser: any) => {
             });
 
             // Move to next generation
-            currentRefCode = referrerDoc.data().referredBy;
+            currentRefCode = referrerDoc.data().referredBy?.toUpperCase();
         }
         console.log("Commission distribution completed successfully.");
     } catch (e) {

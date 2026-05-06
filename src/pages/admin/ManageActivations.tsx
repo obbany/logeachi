@@ -130,6 +130,12 @@ export const ManageActivations = () => {
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (userData.status !== 'active') {
+            const { distributeCommission } = await import('../../lib/referral');
+            await distributeCommission(userData);
+          }
+
           const updates: any = {
             status: 'active',
             activatedAt: new Date().toISOString()

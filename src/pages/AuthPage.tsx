@@ -51,7 +51,7 @@ export const AuthPage = ({ mode }: { mode: 'login' | 'register' }) => {
             balance: 0,
             totalWithdraw: 0,
             referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-            referredBy: referral || null,
+            referredBy: (referral || null)?.toUpperCase(),
             country: 'Bangladesh',
             role: 'user',
             createdAt: new Date().toISOString(),
