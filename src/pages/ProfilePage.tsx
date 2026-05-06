@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
   Phone, 
@@ -10,9 +10,11 @@ import {
   Copy
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, cn } from '../lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const InfoRow = ({ icon: Icon, label, value }: any) => (
   <div className="flex items-center gap-4 py-3 border-b border-slate-50 last:border-0 font-sans">
@@ -45,6 +47,53 @@ export const ProfilePage = () => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
+  const [teamLevels, setTeamLevels] = useState({ 1: 0, 2: 0, 3: 0 });
+  const [teamSize, setTeamSize] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
+
+  useEffect(() => {
+    const fetchProfileStats = async () => {
+      if (!userData?.uid) return;
+
+      // Fetch team data
+      const usersSnap = await getDocs(query(collection(db, 'users')));
+      const allUsers = usersSnap.docs.map(doc => ({ ...doc.data() }));
+
+      const level1 = allUsers.filter(u => u.referredBy === userData.referralCode);
+      const level1Codes = level1.map(u => u.referralCode);
+      const level2 = allUsers.filter(u => level1Codes.includes(u.referredBy) && u.referredBy);
+      const level2Codes = level2.map(u => u.referralCode);
+      const level3 = allUsers.filter(u => level2Codes.includes(u.referredBy) && u.referredBy);
+
+      setTeamLevels({ 
+        1: level1.length, 
+        2: level2.length, 
+        3: level3.length 
+      });
+      setTeamSize(level1.length + level2.length + level3.length);
+
+      // Fetch Total Earned (Lifetime)
+      const q = query(collection(db, 'transactions'), 
+        where('userId', 'in', [userData.uid, userData.phone].filter(Boolean))
+      );
+      
+      const tSnap = await getDocs(q);
+      
+      const earnings = tSnap.docs
+        .filter(d => {
+          const data = d.data();
+          // Count positive transaction amounts as earnings, excluding deposits/withdrawals
+          if (!data.amount || data.amount <= 0) return false;
+          return data.type !== 'deposit' && data.type !== 'withdrawal' && data.type !== 'payment'; 
+        })
+        .reduce((sum, d) => sum + (d.data().amount || 0), 0);
+      
+      setTotalEarned(earnings);
+    };
+
+    fetchProfileStats();
+  }, [userData]);
+
   const copyId = () => {
     const idToCopy = userData?.shortId || userData?.uid;
     if (idToCopy) {
@@ -75,8 +124,8 @@ export const ProfilePage = () => {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Wallet} label="Balance" value={formatCurrency(userData.balance || 0).replace('BDT', '৳')} colorClass={{ bg: 'bg-blue-600', text: 'text-blue-600' }} />
-        <StatCard icon={TrendingUp} label="Total Earned" value={formatCurrency(userData.totalEarned || 0).replace('BDT', '৳')} colorClass={{ bg: 'bg-emerald-600', text: 'text-emerald-600' }} />
-        <StatCard icon={Users} label="My Team" value={userData.teamCount || 0} colorClass={{ bg: 'bg-indigo-600', text: 'text-indigo-600' }} />
+        <StatCard icon={TrendingUp} label="Total Earned" value={formatCurrency(totalEarned).replace('BDT', '৳')} colorClass={{ bg: 'bg-emerald-600', text: 'text-emerald-600' }} />
+        <StatCard icon={Users} label="My Team" value={teamSize} colorClass={{ bg: 'bg-indigo-600', text: 'text-indigo-600' }} />
         <StatCard icon={Award} label="Referral ID" value={userData.referralCode || 'N/A'} colorClass={{ bg: 'bg-amber-600', text: 'text-amber-600' }} />
       </div>
 
@@ -116,13 +165,29 @@ export const ProfilePage = () => {
               <InfoRow icon={Phone} label="Contact Phone" value={userData.phone} />
               <InfoRow icon={MapPin} label="Country / Region" value={userData.country || 'Bangladesh'} />
             </div>
-            <button 
-              onClick={() => navigate('/settings')}
-              className="w-full mt-4 bg-indigo-600 text-white font-bold py-3 rounded-2xl hover:bg-indigo-700 transition-colors"
-            >
-              Change Password
-            </button>
           </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <h3 className="text-md font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Users size={18} className="text-purple-600" />
+              Referral Team
+            </h3>
+            <div className="flex flex-wrap gap-4">
+              {[1, 2, 3].map(lv => (
+                <div key={lv} className="flex-1 min-w-[100px] bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Level {lv}</p>
+                  <p className="text-2xl font-black text-slate-900 mt-1">{teamLevels[lv as keyof typeof teamLevels]}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => navigate('/settings')}
+            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-colors uppercase tracking-widest text-sm shadow-xl"
+          >
+            Change Password
+          </button>
         </div>
       </div>
     </div>

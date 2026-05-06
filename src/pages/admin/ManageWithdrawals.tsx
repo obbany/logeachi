@@ -21,6 +21,20 @@ const CopyButton = ({ text, title = "Copy" }: { text: string, title?: string }) 
   );
 };
 
+const formatTimeAgo = (timestamp: any): string => {
+  if (!timestamp) return 'Time unknown';
+  const date = typeof timestamp.toDate === 'function' ? timestamp.toDate() : new Date(timestamp);
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return `Just now`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
 export const ManageWithdrawals = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,53 +217,65 @@ export const ManageWithdrawals = () => {
             ) : filteredRequests.length === 0 ? (
                 <div className="p-12 text-center text-slate-400"><AlertCircle className="mx-auto mb-2" size={24} /> No requests found</div>
             ) : filteredRequests.map(req => (
-                <div key={req.id} className="bg-white rounded-3xl p-6 border border-slate-100 flex items-center justify-between gap-6 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center gap-4">
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <User size={20} className="text-slate-400" />
-                      </div>
-                      <div className="flex flex-col group/uid">
-                        <div className="flex items-center gap-2">
-                          <p className="font-black text-slate-900 text-sm">ID: {req.userShortId || 'N/A'}</p>
-                          {req.userShortId && <CopyButton text={req.userShortId} title="Copy User ID" />}
+                <div key={req.id} className="bg-white rounded-3xl p-5 md:p-6 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-5 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between w-full md:w-auto">
+                      <div className="flex items-center gap-4">
+                        <div className="p-4 bg-slate-50 rounded-2xl hidden md:block">
+                          <User size={20} className="text-slate-400" />
                         </div>
-                        <p className="text-[10px] text-slate-400 font-mono tracking-tighter">UID: {req.userId.substring(0, 8)}...</p>
+                        <div className="flex flex-col group/uid">
+                          <div className="flex items-center gap-2">
+                            <p className="font-black text-slate-900 text-sm">ID: {req.userShortId || 'N/A'}</p>
+                            {req.userShortId && <CopyButton text={req.userShortId} title="Copy User ID" />}
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-mono tracking-tighter">UID: {req.userId.substring(0, 8)}...</p>
+                          <p className="text-[10px] text-indigo-500 font-bold mt-0.5 flex items-center gap-1">
+                            <Clock size={10} />
+                            {formatTimeAgo(req.createdAt)}
+                          </p>
+                        </div>
                       </div>
+                      <div className="font-black text-slate-900 text-lg md:hidden">৳{req.amount.toLocaleString()}</div>
                     </div>
 
-                    <div className="text-right">
-                      <p className="uppercase text-[10px] font-black text-slate-400 tracking-widest">{req.method}</p>
-                      <div className="flex items-center justify-end gap-2 group/phone">
-                        <p className="font-mono text-xs font-bold text-slate-900">{req.phone}</p>
-                        <CopyButton text={req.phone} title="Copy Number" />
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 w-full md:w-auto">
+                      <div className="flex items-center justify-between md:block w-full md:w-auto">
+                        <div className="text-left md:text-right">
+                          <p className="uppercase text-[10px] font-black text-slate-400 tracking-widest">{req.method}</p>
+                          <div className="flex items-center justify-start md:justify-end gap-2 group/phone">
+                            <p className="font-mono text-xs font-bold text-slate-900">{req.phone}</p>
+                            <CopyButton text={req.phone} title="Copy Number" />
+                          </div>
+                        </div>
+                        <div className="font-black text-slate-900 text-base hidden md:block">৳{req.amount.toLocaleString()}</div>
                       </div>
-                    </div>
 
-                    <div className="font-black text-slate-900 text-base">৳{req.amount.toLocaleString()}</div>
-
-                    <div className="flex items-center gap-2">
-                        {req.status === 'pending' ? (
-                           <div className="flex gap-2">
-                             <button 
-                               onClick={() => handleAction(req.id, 'rejected')} 
-                               className="px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
-                             >
-                               <X size={14} />
-                               Cancel
-                             </button>
-                             <button 
-                               onClick={() => handleAction(req.id, 'completed')} 
-                               className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
-                             >
-                               <Check size={14} />
-                               Approve
-                             </button>
-                           </div>
-                        ) : (
-                          <span className={cn("text-[10px] font-black uppercase px-5 py-2.5 rounded-full", req.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>
-                            {req.status}
-                          </span>
-                        )}
+                      <div className="w-full md:w-auto">
+                          {req.status === 'pending' ? (
+                             <div className="flex gap-2 w-full md:w-auto border-t border-slate-50 pt-4 md:border-0 md:pt-0">
+                               <button 
+                                 onClick={() => handleAction(req.id, 'rejected')} 
+                                 className="flex-1 md:flex-none justify-center px-4 py-3 md:py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                               >
+                                 <X size={14} />
+                                 Cancel
+                               </button>
+                               <button 
+                                 onClick={() => handleAction(req.id, 'completed')} 
+                                 className="flex-1 md:flex-none justify-center px-4 py-3 md:py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                               >
+                                 <Check size={14} />
+                                 Approve
+                               </button>
+                             </div>
+                          ) : (
+                            <div className="border-t border-slate-50 pt-4 md:border-0 md:pt-0 flex">
+                              <span className={cn("text-[10px] font-black uppercase px-5 py-3 md:py-2.5 rounded-xl w-full text-center md:rounded-full md:w-auto", req.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>
+                                {req.status}
+                              </span>
+                            </div>
+                          )}
+                      </div>
                     </div>
                 </div>
             ))}
