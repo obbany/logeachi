@@ -40,10 +40,46 @@ export const ManageWithdrawals = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'rejected'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true);
+  const [savingFeature, setSavingFeature] = useState(false);
 
   useEffect(() => {
     fetchRequests();
+    fetchFeatureStatus();
   }, []);
+
+  const fetchFeatureStatus = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'settings'));
+      const featuresDoc = snap.docs.find(d => d.id === 'features');
+      if (featuresDoc) {
+        setWithdrawalsEnabled(featuresDoc.data().withdrawalsEnabled ?? true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleFeature = async () => {
+    setSavingFeature(true);
+    try {
+      const newState = !withdrawalsEnabled;
+      const docRef = doc(db, 'settings', 'features');
+      await runTransaction(db, async (t) => {
+        const snap = await t.get(docRef);
+        if (!snap.exists()) {
+          t.set(docRef, { withdrawalsEnabled: newState });
+        } else {
+          t.update(docRef, { withdrawalsEnabled: newState });
+        }
+      });
+      setWithdrawalsEnabled(newState);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingFeature(false);
+    }
+  };
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -124,13 +160,39 @@ export const ManageWithdrawals = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
       {/* Admin Wallet Header */}
-      <div className="bg-slate-900 text-white rounded-[2rem] p-8 shadow-2xl flex items-center justify-between">
+      <div className="bg-slate-900 text-white rounded-[2rem] p-8 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Financial Oversight</p>
           <h2 className="text-3xl font-black">Manage Withdrawals</h2>
         </div>
-        <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center border border-white/10">
-          <CreditCard className="text-white" size={32} />
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 bg-slate-800 px-6 py-4 rounded-2xl border border-slate-700">
+             <div className="flex flex-col">
+               <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Withdrawals</span>
+               <span className={cn("text-sm font-black", withdrawalsEnabled ? "text-emerald-400" : "text-red-400")}>
+                 {withdrawalsEnabled ? 'ENABLED' : 'DISABLED'}
+               </span>
+             </div>
+             <button
+               disabled={savingFeature}
+               onClick={toggleFeature}
+               className={cn(
+                 "relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900",
+                 withdrawalsEnabled ? "bg-emerald-500" : "bg-slate-600",
+                 savingFeature && "opacity-50 cursor-not-allowed"
+               )}
+             >
+               <span
+                 className={cn(
+                   "inline-block h-6 w-6 transform rounded-full bg-white transition-transform",
+                   withdrawalsEnabled ? "translate-x-9" : "translate-x-1"
+                 )}
+               />
+             </button>
+          </div>
+          <div className="hidden md:flex w-16 h-16 bg-white/10 rounded-3xl items-center justify-center border border-white/10">
+            <CreditCard className="text-white" size={32} />
+          </div>
         </div>
       </div>
 

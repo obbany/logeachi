@@ -21,6 +21,7 @@ export const AccountActivationPaymentPage = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
   const [config, setConfig] = useState<Config | null>(null);
+  const [features, setFeatures] = useState<any>(null);
   const [method, setMethod] = useState('bkash');
   const [trxId, setTrxId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +69,10 @@ export const AccountActivationPaymentPage = () => {
     if (configSnap.exists()) {
       setConfig(configSnap.data() as Config);
     }
+    const featuresSnap = await getDoc(doc(db, 'settings', 'features'));
+    if (featuresSnap.exists()) {
+      setFeatures(featuresSnap.data());
+    }
   };
 
   const handleCopy = (num: string) => {
@@ -79,6 +84,11 @@ export const AccountActivationPaymentPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userData || !config || isSubmitting) return;
+
+    if (features?.activationsEnabled === false) {
+      alert('Activations are currently disabled by the administrator.');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -160,7 +170,15 @@ export const AccountActivationPaymentPage = () => {
                   ))
                 }
               </div>
-          ) : showSuccess ? renderSuccess() : (
+          ) : showSuccess ? renderSuccess() : features?.activationsEnabled === false ? (
+            <div className="text-center py-10 space-y-4">
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 mb-2">Activations Disabled</h1>
+              <p className="text-slate-500 text-sm font-medium">Account activations are temporarily disabled by the administrator. Please check back later.</p>
+            </div>
+          ) : (
             <>
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">

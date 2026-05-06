@@ -39,11 +39,40 @@ export const ManageActivations = () => {
   const [isUpdatingFee, setIsUpdatingFee] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [activationsEnabled, setActivationsEnabled] = useState(true);
+  const [savingFeature, setSavingFeature] = useState(false);
 
   useEffect(() => {
     fetchActivations();
     fetchSettings();
+    fetchFeatureStatus();
   }, []);
+
+  const fetchFeatureStatus = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'settings'));
+      const featuresDoc = snap.docs.find(d => d.id === 'features');
+      if (featuresDoc) {
+        setActivationsEnabled(featuresDoc.data().activationsEnabled ?? true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleFeature = async () => {
+    setSavingFeature(true);
+    try {
+      const newState = !activationsEnabled;
+      const docRef = doc(db, 'settings', 'features');
+      await setDoc(docRef, { activationsEnabled: newState }, { merge: true });
+      setActivationsEnabled(newState);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingFeature(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -142,10 +171,37 @@ export const ManageActivations = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manage Activations</h1>
-          <p className="text-slate-500 text-sm">Verify and approve account activation payments.</p>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        <div className="flex items-center justify-between xl:justify-start gap-8">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manage Activations</h1>
+            <p className="text-slate-500 text-sm">Verify and approve account activation payments.</p>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-[2rem] border border-slate-100 shadow-sm">
+             <div className="flex flex-col">
+               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Activations</span>
+               <span className={cn("text-xs font-black", activationsEnabled ? "text-emerald-500" : "text-red-500")}>
+                 {activationsEnabled ? 'ENABLED' : 'DISABLED'}
+               </span>
+             </div>
+             <button
+               disabled={savingFeature}
+               onClick={toggleFeature}
+               className={cn(
+                 "relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none",
+                 activationsEnabled ? "bg-emerald-500" : "bg-slate-300",
+                 savingFeature && "opacity-50 cursor-not-allowed"
+               )}
+             >
+               <span
+                 className={cn(
+                   "inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+                   activationsEnabled ? "translate-x-8" : "translate-x-1"
+                 )}
+               />
+             </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">

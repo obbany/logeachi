@@ -23,10 +23,47 @@ export const ManagePlanRequests = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [plansEnabled, setPlansEnabled] = useState(true);
+  const [savingFeature, setSavingFeature] = useState(false);
 
   useEffect(() => {
     fetchRequests();
+    fetchFeatureStatus();
   }, []);
+
+  const fetchFeatureStatus = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'settings'));
+      const featuresDoc = snap.docs.find(d => d.id === 'features');
+      if (featuresDoc) {
+        setPlansEnabled(featuresDoc.data().plansEnabled ?? true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleFeature = async () => {
+    setSavingFeature(true);
+    try {
+      const newState = !plansEnabled;
+      const docRef = doc(db, 'settings', 'features');
+      await updateDoc(docRef, { plansEnabled: newState }).catch(async (e) => {
+        if (e.code === 'not-found') {
+          // Document doesn't exist yet, we can create it
+          const { setDoc } = await import('firebase/firestore');
+          await setDoc(docRef, { plansEnabled: newState }, { merge: true });
+        } else {
+          throw e; // rethrow other errors
+        }
+      });
+      setPlansEnabled(newState);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingFeature(false);
+    }
+  };
 
   const fetchRequests = () => {
     setLoading(true);
@@ -140,9 +177,36 @@ export const ManagePlanRequests = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Manage User Plans</h1>
-        <p className="text-sm text-slate-500 mt-1">Review and process user package purchases.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Manage User Plans</h1>
+          <p className="text-sm text-slate-500 mt-1">Review and process user package purchases.</p>
+        </div>
+
+        <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm">
+           <div className="flex flex-col">
+             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">User Plans</span>
+             <span className={cn("text-xs font-black", plansEnabled ? "text-emerald-600" : "text-red-600")}>
+               {plansEnabled ? 'ENABLED' : 'DISABLED'}
+             </span>
+           </div>
+           <button
+             disabled={savingFeature}
+             onClick={toggleFeature}
+             className={cn(
+               "relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none",
+               plansEnabled ? "bg-emerald-500" : "bg-slate-300",
+               savingFeature && "opacity-50 cursor-not-allowed"
+             )}
+           >
+             <span
+               className={cn(
+                 "inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+                 plansEnabled ? "translate-x-6" : "translate-x-1"
+               )}
+             />
+           </button>
+        </div>
       </div>
 
       {/* Stats */}

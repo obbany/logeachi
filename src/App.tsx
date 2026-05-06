@@ -23,6 +23,7 @@ import { ManageActivations } from './pages/admin/ManageActivations';
 import { ManagePlanRequests } from './pages/admin/ManagePlanRequests';
 import { ManageSupport } from './pages/admin/ManageSupport';
 import { SupportPage } from './pages/SupportPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from './lib/firebase';
@@ -155,6 +156,9 @@ export default function App() {
             <Route path="support" element={<ManageSupport />} />
             <Route path="bonus" element={<ManageBonus />} />
           </Route>
+
+          {/* Catch all route */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

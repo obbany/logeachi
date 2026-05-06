@@ -25,6 +25,7 @@ export const ActivationPage = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
   const [config, setConfig] = useState<Config | null>(null);
+  const [features, setFeatures] = useState<any>(null);
   const [plans, setPlans] = useState<PackagePlan[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,13 +43,18 @@ export const ActivationPage = () => {
 
   const fetchData = async () => {
     try {
-      const [configSnap, plansSnap] = await Promise.all([
+      const [configSnap, plansSnap, featuresSnap] = await Promise.all([
         getDoc(doc(db, 'settings', 'global')),
-        getDocs(collection(db, 'packages'))
+        getDocs(collection(db, 'packages')),
+        getDoc(doc(db, 'settings', 'features'))
       ]);
       
       if (configSnap.exists()) {
         setConfig(configSnap.data() as Config);
+      }
+      
+      if (featuresSnap.exists()) {
+        setFeatures(featuresSnap.data());
       }
       
       const plansData = plansSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PackagePlan)).sort((a,b) => a.price - b.price);
@@ -175,16 +181,28 @@ export const ActivationPage = () => {
                       <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-amber-600">
                         <AlertCircle size={40} />
                       </div>
-                      <h3 className="text-xl font-black text-slate-900 mb-2">Account Activation Required</h3>
-                      <p className="text-slate-500 text-xs font-medium leading-relaxed max-w-xs mx-auto mb-6">
-                        Pay ৳{config?.activationFee || 0} to activate your account.
-                      </p>
-                      <button
-                        onClick={() => navigate('/activation-payment')}
-                        className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl transition-all hover:bg-slate-800 shadow-xl text-sm uppercase tracking-widest"
-                      >
-                         Activate Now
-                      </button>
+                      
+                      {features?.activationsEnabled === false ? (
+                        <>
+                          <h3 className="text-xl font-black text-slate-900 mb-2">Activations Unavailable</h3>
+                          <p className="text-slate-500 text-xs font-medium leading-relaxed max-w-xs mx-auto mb-6">
+                            Account activations are temporarily disabled by the administrator. Please check back later.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-xl font-black text-slate-900 mb-2">Account Activation Required</h3>
+                          <p className="text-slate-500 text-xs font-medium leading-relaxed max-w-xs mx-auto mb-6">
+                            Pay ৳{config?.activationFee || 0} to activate your account.
+                          </p>
+                          <button
+                            onClick={() => navigate('/activation-payment')}
+                            className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl transition-all hover:bg-slate-800 shadow-xl text-sm uppercase tracking-widest"
+                          >
+                             Activate Now
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : activePlan ? (
                     <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-3xl p-6 shadow-xl shadow-emerald-200 mb-6 relative overflow-hidden">
@@ -256,19 +274,21 @@ export const ActivationPage = () => {
                                   alert('You must activate your account first!');
                                 } else if (activePlan) {
                                   alert('You already have an active premium membership. Please wait until it expires.');
+                                } else if (features?.plansEnabled === false) {
+                                  alert('Plan purchases are currently disabled.');
                                 } else {
                                   navigate('/payment', { state: { plan } });
                                 }
                               }}
                               className={cn(
                                 "w-full mt-5 font-black py-3 rounded-xl transition-all shadow-lg text-[10px] uppercase tracking-widest disabled:opacity-50",
-                                activePlan 
+                                activePlan || features?.plansEnabled === false
                                   ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
                                   : "bg-slate-900 text-white hover:bg-slate-800"
                               )}
-                              disabled={!!activePlan}
+                              disabled={!!activePlan || features?.plansEnabled === false}
                             >
-                              {activePlan ? 'Membership Active' : 'Purchase Plan'}
+                              {activePlan ? 'Membership Active' : features?.plansEnabled === false ? 'Disabled' : 'Purchase Plan'}
                             </button>
                           </div>
                         </div>

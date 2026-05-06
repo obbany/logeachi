@@ -27,12 +27,14 @@ export const WithdrawPage = () => {
   const [wPhone, setWPhone] = useState('');
   const [wMethod, setWMethod] = useState('bkash');
   const [config, setConfig] = useState<Config | null>(null);
+  const [features, setFeatures] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'payment' | 'history'>('payment');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchConfig();
+    fetchFeatures();
     if (userData) {
       fetchHistory();
     }
@@ -41,6 +43,11 @@ export const WithdrawPage = () => {
   const fetchConfig = async () => {
     const snap = await getDoc(doc(db, 'settings', 'global'));
     if (snap.exists()) setConfig(snap.data() as Config);
+  };
+
+  const fetchFeatures = async () => {
+    const snap = await getDoc(doc(db, 'settings', 'features'));
+    if (snap.exists()) setFeatures(snap.data());
   };
 
   const fetchHistory = async () => {
@@ -68,6 +75,10 @@ export const WithdrawPage = () => {
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userData || !config) return;
+    if (features?.withdrawalsEnabled === false) {
+      alert('Withdrawals are currently disabled by the administrator.');
+      return;
+    }
 
     const amount = Number(wAmount);
     if (amount < (config.minWithdraw || 200)) {
@@ -147,15 +158,32 @@ export const WithdrawPage = () => {
 
       <AnimatePresence mode="wait">
         {activeTab === 'payment' ? (
-          <motion.form
-            key="form"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onSubmit={handleWithdraw}
-            className="space-y-4"
-          >
-            {errorMsg && (
+          features?.withdrawalsEnabled === false ? (
+            <motion.div
+              key="disabled"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center p-8 bg-slate-50 border border-slate-100 shadow-inner rounded-[2rem] space-y-4"
+            >
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle size={32} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 mb-1">Withdrawals Currently Disabled</h3>
+                <p className="text-xs font-bold text-slate-400">Our system is undergoing maintenance. You will be able to withdraw funds soon.</p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.form
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onSubmit={handleWithdraw}
+              className="space-y-4"
+            >
+              {errorMsg && (
               <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl flex items-center gap-2">
                 <AlertCircle size={14} /> {errorMsg}
               </div>
@@ -188,6 +216,7 @@ export const WithdrawPage = () => {
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirm Withdrawal'}
             </button>
           </motion.form>
+          )
         ) : (
           <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
              {loadingHistory ? <Loader2 className="animate-spin mx-auto text-slate-300" /> : history.map(h => (

@@ -15,6 +15,7 @@ export const PlanPaymentPage = () => {
   const plan = location.state?.plan as PackagePlan | undefined;
   
   const [config, setConfig] = useState<Config | null>(null);
+  const [features, setFeatures] = useState<any>(null);
   const [method, setMethod] = useState<'bkash' | 'nagad' | 'rocket' | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,6 +86,10 @@ export const PlanPaymentPage = () => {
       if (snap.exists()) {
         setConfig(snap.data() as Config);
       }
+      const featuresSnap = await getDoc(doc(db, 'settings', 'features'));
+      if (featuresSnap.exists()) {
+        setFeatures(featuresSnap.data());
+      }
     } catch (e) {
       console.error(e);
     }
@@ -104,6 +109,11 @@ export const PlanPaymentPage = () => {
     e.preventDefault();
     if (!method || !transactionId) {
       setError('Please fill in Transaction ID');
+      return;
+    }
+
+    if (features?.plansEnabled === false) {
+      setError('Plan purchases are currently disabled.');
       return;
     }
 
@@ -219,6 +229,15 @@ export const PlanPaymentPage = () => {
         </div>
       </div>
 
+      {features?.plansEnabled === false ? (
+        <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100 relative text-center">
+          <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+             <AlertCircle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 mb-2">Currently Unavailable</h2>
+          <p className="text-slate-500 text-sm">Plan purchases are temporarily disabled by the administrator. Please check back later.</p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6 relative">
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold flex items-center gap-2">
@@ -309,6 +328,7 @@ export const PlanPaymentPage = () => {
           {loading ? 'Submitting...' : 'Submit Payment'}
         </button>
       </form>
+       )}
       </div>
       )}
     </>
