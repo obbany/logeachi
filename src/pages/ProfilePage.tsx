@@ -47,7 +47,6 @@ export const ProfilePage = () => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
-  const [teamLevels, setTeamLevels] = useState({ 1: 0, 2: 0, 3: 0 });
   const [teamSize, setTeamSize] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
 
@@ -59,17 +58,12 @@ export const ProfilePage = () => {
       const usersSnap = await getDocs(query(collection(db, 'users')));
       const allUsers = usersSnap.docs.map(doc => ({ ...doc.data() }));
 
-      const level1 = allUsers.filter(u => u.referredBy === userData.referralCode);
-      const level1Codes = level1.map(u => u.referralCode);
-      const level2 = allUsers.filter(u => level1Codes.includes(u.referredBy) && u.referredBy);
-      const level2Codes = level2.map(u => u.referralCode);
-      const level3 = allUsers.filter(u => level2Codes.includes(u.referredBy) && u.referredBy);
+      const level1 = allUsers.filter(u => u.referredBy === (userData.referralCode || '').toUpperCase() && u.referredBy);
+      const level1Codes = level1.map(u => (u.referralCode || '').toUpperCase());
+      const level2 = allUsers.filter(u => level1Codes.includes((u.referredBy || '').toUpperCase()) && u.referredBy);
+      const level2Codes = level2.map(u => (u.referralCode || '').toUpperCase());
+      const level3 = allUsers.filter(u => level2Codes.includes((u.referredBy || '').toUpperCase()) && u.referredBy);
 
-      setTeamLevels({ 
-        1: level1.length, 
-        2: level2.length, 
-        3: level3.length 
-      });
       setTeamSize(level1.length + level2.length + level3.length);
 
       // Fetch Total Earned (Lifetime)
@@ -164,21 +158,6 @@ export const ProfilePage = () => {
               <InfoRow icon={UserIcon} label="Full Name" value={userData.name} />
               <InfoRow icon={Phone} label="Contact Phone" value={userData.phone} />
               <InfoRow icon={MapPin} label="Country / Region" value={userData.country || 'Bangladesh'} />
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-            <h3 className="text-md font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Users size={18} className="text-purple-600" />
-              Referral Team
-            </h3>
-            <div className="flex flex-wrap gap-4">
-              {[1, 2, 3].map(lv => (
-                <div key={lv} className="flex-1 min-w-[100px] bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Level {lv}</p>
-                  <p className="text-2xl font-black text-slate-900 mt-1">{teamLevels[lv as keyof typeof teamLevels]}</p>
-                </div>
-              ))}
             </div>
           </div>
 
