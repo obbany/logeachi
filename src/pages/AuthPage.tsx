@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { Logo } from '../components/Logo';
 import { ShieldCheck, Phone, Lock, User, Globe } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -51,7 +52,7 @@ export const AuthPage = ({ mode }: { mode: 'login' | 'register' }) => {
             balance: 0,
             totalWithdraw: 0,
             referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-            referredBy: (referral || null)?.toUpperCase(),
+            referredBy: referral ? referral.toUpperCase() : null,
             country: 'Bangladesh',
             role: 'user',
             createdAt: new Date().toISOString(),
@@ -98,10 +99,8 @@ export const AuthPage = ({ mode }: { mode: 'login' | 'register' }) => {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100"
       >
-        <div className="text-center mb-8">
-          <div className="inline-flex bg-blue-600 p-3 rounded-xl mb-4 shadow-lg shadow-blue-200">
-            <ShieldCheck className="text-white w-8 h-8" />
-          </div>
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
+          <Logo size="xl" className="mb-6 scale-125" />
           <h1 className="text-2xl font-bold text-slate-900">
             {mode === 'register' ? 'Create Account' : 'Welcome Back'}
           </h1>

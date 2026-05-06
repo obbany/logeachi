@@ -36,11 +36,11 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <motion.div 
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-          className="bg-blue-600 p-4 rounded-2xl"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          className="text-2xl font-bold tracking-tight"
         >
-          <ShieldCheck className="text-white w-10 h-10" />
+          <span className="text-slate-900">Loge</span><span className="text-green-600">aci</span><span className="text-slate-900">.com</span>
         </motion.div>
       </div>
     );

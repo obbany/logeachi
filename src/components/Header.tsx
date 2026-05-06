@@ -30,11 +30,9 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
         >
           <Menu className="w-5 h-5 text-slate-600" />
         </button>
-        <div className="flex items-center gap-2 lg:hidden">
-          <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
-            <ShieldCheck size={20} />
-          </div>
-        </div>
+        <Link to="/dashboard" className="flex items-center lg:hidden text-lg font-bold tracking-tight">
+          <span className="text-slate-900">Loge</span><span className="text-green-600">aci</span><span className="text-slate-900">.com</span>
+        </Link>
       </div>
 
       <div className="flex items-center gap-4">

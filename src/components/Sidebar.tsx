@@ -18,6 +18,7 @@ import {
 import { cn } from '../lib/utils';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
+import { Logo } from './Logo';
 
 const userNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -171,21 +172,15 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
           {/* Header (Admin View) */}
           {isAdminView && (
-            <div className="p-6 flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-lg">
-                <ShieldCheck className="text-white w-6 h-6" />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">LogeAdmin</span>
+            <div className="p-6 flex items-center justify-center border-b border-slate-100">
+               <Logo size="lg" />
             </div>
           )}
 
           {/* Section: App Branding (If user not logged in or admin view) */}
           {!isAdminView && !userData && (
-            <div className="p-6 flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <ShieldCheck className="text-white w-6 h-6" />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">LogeAchi</span>
+            <div className="p-6 flex items-center justify-center border-b border-slate-100">
+               <Logo size="lg" />
             </div>
           )}
 

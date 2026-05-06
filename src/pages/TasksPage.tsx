@@ -56,6 +56,7 @@ export const TasksPage = () => {
   const { userData, setUserData } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
+  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskLimit, setTaskLimit] = useState(0);
   const [activeTab, setActiveTab] = useState<'available' | 'history'>('available');
@@ -146,15 +147,19 @@ export const TasksPage = () => {
         const subQuery = query(collection(db, 'submissions'), where('userId', '==', userData.uid));
         const subSnap = await getDocs(subQuery);
         const subMap: Record<string, Submission> = {};
+        const allSubs: (Submission & { id: string })[] = [];
         subSnap.docs.forEach(doc => {
           const data = doc.data() as Submission;
+          const sub = { id: doc.id, ...data };
+          allSubs.push(sub);
           const existingTime = subMap[data.taskId] ? new Date(subMap[data.taskId].createdAt).getTime() : 0;
           const newTime = new Date(data.createdAt).getTime();
           if (newTime >= existingTime) {
-            subMap[data.taskId] = { id: doc.id, ...data };
+            subMap[data.taskId] = sub;
           }
         });
         setSubmissions(subMap);
+        setAllSubmissions(allSubs);
 
         // Fetch Daily Completions Count
         const today = new Date().toISOString().split('T')[0];
@@ -249,13 +254,12 @@ export const TasksPage = () => {
       });
 
       // 4. Update Local States
+      const newSubmission = { id: submissionRef.id, ...submissionData };
       setSubmissions(prev => ({
         ...prev,
-        [task.id]: {
-          id: submissionRef.id,
-          ...submissionData
-        }
+        [task.id]: newSubmission
       }));
+      setAllSubmissions(prev => [newSubmission, ...prev]);
 
       if (setUserData) {
         setUserData({ ...userData, balance: (userData.balance || 0) + task.reward });
@@ -327,7 +331,7 @@ export const TasksPage = () => {
               activeTab === 'history' ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
             )}
           >
-            Work History ({completedTasks.length})
+            Work History ({allSubmissions.length})
             {activeTab === 'history' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
           </button>
         </div>
@@ -421,38 +425,38 @@ export const TasksPage = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {completedTasks.sort((a, b) => {
-              const dateA = new Date(submissions[a.id]?.createdAt || 0).getTime();
-              const dateB = new Date(submissions[b.id]?.createdAt || 0).getTime();
+          {allSubmissions.sort((a, b) => {
+              const dateA = new Date(a.createdAt || 0).getTime();
+              const dateB = new Date(b.createdAt || 0).getTime();
               return dateB - dateA;
-          }).map(task => {
-            const subTime = new Date(submissions[task.id]?.createdAt || 0).getTime();
-            const availableAt = new Date(subTime + (24 * 60 * 60 * 1000));
+          }).map(sub => {
+            const task = tasks.find(t => t.id === sub.taskId);
+            const title = task?.title || 'Completed Job';
+            const platform = task?.platform || 'other';
+            const reward = sub.reward || task?.reward || 0;
             return (
-            <div key={task.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div key={sub.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4 w-full">
                 <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
                   <CheckCircle size={24} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 line-clamp-1">{task.title}</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(submissions[task.id]?.createdAt).toLocaleString()}</p>
-                  <div className="text-[10px] text-blue-500 font-bold mt-0.5 flex flex-wrap items-center gap-1">Available Again In: <LiveCountdown targetDate={availableAt.getTime()} /></div>
+                  <h4 className="font-bold text-slate-900 line-clamp-1">{title}</h4>
+                  <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(sub.createdAt).toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
                 <div className="bg-slate-50 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <PlatformIcon platform={task.platform} size={14} />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">{task.platform}</span>
+                  <PlatformIcon platform={platform} size={14} />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">{platform}</span>
                 </div>
                 <div className="text-emerald-600 font-black text-lg">
-                  +৳{task.reward}
+                  +৳{reward}
                 </div>
               </div>
             </div>
-            );
-          })}
-          {completedTasks.length === 0 && (
+          )})}
+          {allSubmissions.length === 0 && (
             <div className="py-20 text-center">
               <History className="w-12 h-12 text-slate-200 mx-auto mb-4" />
               <p className="text-slate-400 font-bold">You haven't completed any jobs yet.</p>
