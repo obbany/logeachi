@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { motion } from 'motion/react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,22 +49,46 @@ export const Dashboard = () => {
   const [teamLevels, setTeamLevels] = useState({ 1: 0, 2: 0, 3: 0 });
   const [earnings24h, setEarnings24h] = useState(0);
   const [payouts, setPayouts] = useState<Array<{amount: number, time: string}>>([]);
+  const [supportLinks, setSupportLinks] = useState<any>(null);
 
   useEffect(() => {
     const fetchTeamData = async () => {
       if (!userData?.uid) return;
       
+      const supportSnap = await getDoc(doc(db, 'settings', 'support'));
+      if (supportSnap.exists()) {
+        setSupportLinks(supportSnap.data());
+      }
+      
       const todayMidnight = new Date();
       todayMidnight.setHours(0, 0, 0, 0);
 
-      const snap = await getDocs(query(collection(db, 'users'), where('status', '==', 'active')));
-      const allUsers = snap.docs.map(doc => ({ ...doc.data() }));
+      let level1 = [];
+      let level2 = [];
+      let level3 = [];
 
-      const level1 = allUsers.filter(u => u.referredBy === userData.referralCode);
-      const level1Codes = level1.map(u => u.referralCode);
-      const level2 = allUsers.filter(u => level1Codes.includes(u.referredBy) && u.referredBy);
-      const level2Codes = level2.map(u => u.referralCode);
-      const level3 = allUsers.filter(u => level2Codes.includes(u.referredBy) && u.referredBy);
+      if (userData.referralCode) {
+        const level1Snap = await getDocs(query(collection(db, 'users'), where('referredBy', '==', userData.referralCode)));
+        level1 = level1Snap.docs.map(doc => ({ ...doc.data() }));
+        const level1Codes = level1.map(u => u.referralCode).filter(Boolean);
+
+        for (let i = 0; i < level1Codes.length; i += 30) {
+          const chunk = level1Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level2.push(...snap.docs.map(doc => ({ ...doc.data() })));
+        }
+        
+        const level2Codes = level2.map(u => u.referralCode).filter(Boolean);
+        for (let i = 0; i < level2Codes.length; i += 30) {
+          const chunk = level2Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level3.push(...snap.docs.map(doc => ({ ...doc.data() })));
+        }
+      }
 
       setTeamLevels({ 
         1: level1.length, 
@@ -181,8 +205,33 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Referral Card */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          {/* Main Telegram Channel Banner */}
+          <div className="bg-gradient-to-r from-[#0088cc] to-[#33a8ff] p-6 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-md shadow-blue-100">
+            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                <svg className="w-8 h-8 text-[#0088cc]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.509-.165-.914-.253-.88-.535.017-.146.212-.294.526-.457 2.112-.917 5.09-2.2 7.15-3.056 3.42-1.42 4.126-1.666 4.582-1.674z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-black tracking-tight">Main Telegram Channel</h3>
+                <p className="text-blue-100 text-sm mt-1 max-w-sm">Join our official channel for real-time task updates, payment proofs, and latest announcements.</p>
+              </div>
+            </div>
+            <a 
+              href={supportLinks?.mainChannel || '#'} 
+              target="_blank" 
+              rel="noreferrer"
+              className="w-full sm:w-auto bg-white text-[#0088cc] px-8 py-4 rounded-xl font-black tracking-wide text-sm shrink-0 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              Join Channel
+              <ChevronRight size={18} strokeWidth={3} />
+            </a>
+          </div>
+
+          {/* Referral Card */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Trophy className="text-amber-500 w-5 h-5" />
@@ -220,6 +269,7 @@ export const Dashboard = () => {
               </div>
             ))}
           </div>
+        </div>
         </div>
 
         {/* Quick Actions */}

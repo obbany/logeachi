@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Footer } from './Footer';
 import { useAuth } from '../context/AuthContext';
 
 export const Layout = () => {
@@ -27,6 +28,8 @@ export const Layout = () => {
         <main className="flex-1 p-4 lg:p-8">
           <Outlet />
         </main>
+        
+        <Footer />
       </div>
     </div>
   );

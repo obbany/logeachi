@@ -19,16 +19,30 @@ export const TeamPage = () => {
       if (!userData?.referralCode) return;
       setLoading(true);
       try {
-        const snap = await getDocs(query(collection(db, 'users')));
-        const allUsers = snap.docs.map(doc => ({ ...doc.data() } as User));
+        let level1 = [];
+        let level2 = [];
+        let level3 = [];
+        
+        const level1Snap = await getDocs(query(collection(db, 'users'), where('referredBy', '==', userData.referralCode)));
+        level1 = level1Snap.docs.map(doc => ({ ...doc.data() } as User));
+        const level1Codes = level1.map(u => u.referralCode).filter(Boolean);
 
-        const level1 = allUsers.filter(u => u.referredBy === userData.referralCode);
-        const level1Codes = level1.map(u => u.referralCode);
+        for (let i = 0; i < level1Codes.length; i += 30) {
+          const chunk = level1Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level2.push(...snap.docs.map(doc => ({ ...doc.data() } as User)));
+        }
 
-        const level2 = allUsers.filter(u => level1Codes.includes(u.referredBy) && u.referredBy);
-        const level2Codes = level2.map(u => u.referralCode);
-
-        const level3 = allUsers.filter(u => level2Codes.includes(u.referredBy) && u.referredBy);
+        const level2Codes = level2.map(u => u.referralCode).filter(Boolean);
+        for (let i = 0; i < level2Codes.length; i += 30) {
+          const chunk = level2Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level3.push(...snap.docs.map(doc => ({ ...doc.data() } as User)));
+        }
 
         setTeamMembers({ 1: level1, 2: level2, 3: level3 });
       } catch (err) {

@@ -10,7 +10,8 @@ export const ManageSupport = () => {
     accountActive: '',
     withdrawAdmin: '',
     passwordProblem: '',
-    promoteAdmin: ''
+    promoteAdmin: '',
+    mainChannel: ''
   });
 
   useEffect(() => {
@@ -102,6 +103,17 @@ export const ManageSupport = () => {
               onChange={e => setSupportLinks({...supportLinks, promoteAdmin: e.target.value})} 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
               placeholder="https://t.me/your_promote_admin" 
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Main Telegram Channel URL</label>
+            <input 
+              type="url" 
+              value={supportLinks.mainChannel || ''} 
+              onChange={e => setSupportLinks({...supportLinks, mainChannel: e.target.value})} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+              placeholder="https://t.me/your_main_channel" 
             />
           </div>
         </div>

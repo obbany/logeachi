@@ -55,14 +55,32 @@ export const ProfilePage = () => {
       if (!userData?.uid) return;
 
       // Fetch team data
-      const usersSnap = await getDocs(query(collection(db, 'users')));
-      const allUsers = usersSnap.docs.map(doc => ({ ...doc.data() }));
+      let level1 = [];
+      let level2 = [];
+      let level3 = [];
 
-      const level1 = allUsers.filter(u => u.referredBy === (userData.referralCode || '').toUpperCase() && u.referredBy);
-      const level1Codes = level1.map(u => (u.referralCode || '').toUpperCase());
-      const level2 = allUsers.filter(u => level1Codes.includes((u.referredBy || '').toUpperCase()) && u.referredBy);
-      const level2Codes = level2.map(u => (u.referralCode || '').toUpperCase());
-      const level3 = allUsers.filter(u => level2Codes.includes((u.referredBy || '').toUpperCase()) && u.referredBy);
+      if (userData.referralCode) {
+        const level1Snap = await getDocs(query(collection(db, 'users'), where('referredBy', '==', userData.referralCode.toUpperCase())));
+        level1 = level1Snap.docs.map(doc => ({ ...doc.data() }));
+        const level1Codes = level1.map(u => (u.referralCode || '').toUpperCase()).filter(Boolean);
+
+        for (let i = 0; i < level1Codes.length; i += 30) {
+          const chunk = level1Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level2.push(...snap.docs.map(doc => ({ ...doc.data() })));
+        }
+        
+        const level2Codes = level2.map(u => (u.referralCode || '').toUpperCase()).filter(Boolean);
+        for (let i = 0; i < level2Codes.length; i += 30) {
+          const chunk = level2Codes.slice(i, i + 30);
+          if (chunk.length === 0) continue;
+          const q = query(collection(db, 'users'), where('referredBy', 'in', chunk));
+          const snap = await getDocs(q);
+          level3.push(...snap.docs.map(doc => ({ ...doc.data() })));
+        }
+      }
 
       setTeamSize(level1.length + level2.length + level3.length);
 
