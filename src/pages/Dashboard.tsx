@@ -149,10 +149,14 @@ export const Dashboard = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isExpired = userData?.planExpiresAt && new Date(userData.planExpiresAt).getTime() < Date.now();
+  const displayStatus = userData?.status === 'active' ? (isExpired ? 'Expired' : 'Active') : 'Inactive';
+  const statusColor = userData?.status === 'active' ? (isExpired ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-slate-400';
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Activation Banner */}
-      {userData?.status === 'inactive' && (
+      {(userData?.status === 'inactive' || isExpired) && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -162,14 +166,18 @@ export const Dashboard = () => {
             <Lock size={32} />
           </div>
           <div className="flex-1 text-center sm:text-left">
-            <h4 className="text-amber-900 text-xl font-black tracking-tight">Account Restricted</h4>
-            <p className="text-amber-700 text-sm mt-1 max-w-lg">Your account is currently inactive. Activate now to unlock premium high-reward tasks, team earnings, and fast withdrawals.</p>
+            <h4 className="text-amber-900 text-xl font-black tracking-tight">{isExpired ? 'Plan Expired' : 'Account Restricted'}</h4>
+            <p className="text-amber-700 text-sm mt-1 max-w-lg">
+              {isExpired 
+                ? 'Your current plan has expired. Please upgrade or renew your plan to continue earning.' 
+                : 'Your account is currently inactive. Activate now to unlock premium high-reward tasks, team earnings, and fast withdrawals.'}
+            </p>
           </div>
           <button 
             onClick={() => navigate('/activation-payment')}
             className="w-full sm:w-auto bg-amber-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-amber-200 hover:bg-amber-700 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-wider"
           >
-            Activate Now
+            {isExpired ? 'Renew Plan' : 'Activate Now'}
           </button>
         </motion.div>
       )}
@@ -181,7 +189,6 @@ export const Dashboard = () => {
           value={formatCurrency(userData?.balance || 0)} 
           icon={Wallet} 
           color="bg-blue-600"
-          trend={`+${formatCurrency(earnings24h || 0)}`}
         />
         <StatCard 
           title="Total Withdraw" 
@@ -198,9 +205,9 @@ export const Dashboard = () => {
         />
         <StatCard 
           title="Account Status" 
-          value={userData?.status === 'active' ? 'Active' : 'Inactive'} 
+          value={displayStatus} 
           icon={Activity} 
-          color={userData?.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}
+          color={statusColor}
         />
       </div>
 

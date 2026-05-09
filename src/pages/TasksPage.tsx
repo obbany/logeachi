@@ -15,10 +15,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, where, doc, updateDoc, increment, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, where, doc, updateDoc, increment, getDoc, setDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import { Task, Submission, Activation, PackagePlan } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+
+import { format } from 'date-fns';
 
 const PlatformIcon = ({ platform, size = 18 }: { platform: string, size?: number }) => {
   switch (platform.toLowerCase()) {
@@ -114,17 +116,11 @@ export const TasksPage = () => {
           ...hSnapPurchases.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activation))
         ];
 
-        const activeActivation = history.find(h => {
-          if (h.status !== 'approved') return false;
-          const plan = plansData.find(p => p.id === h.packageId);
-          if (!plan) return false;
-          const createdAt = new Date(h.createdAt).getTime();
-          const validity = plan.validity * 24 * 60 * 60 * 1000;
-          return (createdAt + validity) > Date.now();
-        });
-        const activePlan = plansData.find(p => p.id === activeActivation?.packageId);
+        const activePlanId = userData.packageId;
+        const isPlanValid = userData.planExpiresAt && new Date(userData.planExpiresAt).getTime() > Date.now();
+        const activePlan = isPlanValid ? plansData.find(p => p.id === activePlanId) : undefined;
 
-        // Fetch Available Tasks (Active plan + Bonus)
+        // Fetch Available Tasks
         const tasksQuery = query(
           collection(db, 'tasks'), 
           where('status', '==', 'available')
@@ -132,19 +128,30 @@ export const TasksPage = () => {
         const tasksSnap = await getDocs(tasksQuery);
         let taskData = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
         
-        // Filter tasks:
-        // If user has an active package, show tasks for that package OR tasks marked for all packages.
-        // If user has NO active package, show ONLY bonus (Free) tasks.
-        if (activePlan) {
-          taskData = taskData.filter(t => (t.packageId === activePlan.id || !t.packageId) && t.type !== 'bonus');
+        // Filter tasks correctly:
+        if (userData.status === 'active') {
+          if (activePlan) {
+            // User has active plan: show ONLY tasks for this specific plan.
+            // Explicitly exclude bonus/free tasks for premium users.
+            taskData = taskData.filter(t => t.packageId === activePlan.id && t.type !== 'bonus');
+          } else {
+            // Active user but NO plan: show ONLY bonus (free) tasks
+            taskData = taskData.filter(t => t.type === 'bonus');
+          }
         } else {
-          taskData = taskData.filter(t => t.type === 'bonus');
+          // Inactive users see no tasks
+          taskData = [];
         }
         
         setTasks(taskData);
 
-        // Fetch User's Submissions (General History)
-        const subQuery = query(collection(db, 'submissions'), where('userId', '==', userData.uid));
+        // Fetch User's Submissions (General History - Limit to recent 100)
+        const subQuery = query(
+          collection(db, 'submissions'), 
+          where('userId', '==', userData.uid),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
         const subSnap = await getDocs(subQuery);
         const subMap: Record<string, Submission> = {};
         const allSubs: (Submission & { id: string })[] = [];
@@ -284,8 +291,13 @@ export const TasksPage = () => {
     return (Date.now() - subTime) < twentyFourHours;
   };
 
-  const regularTasks = tasks.filter(t => t.type !== 'bonus' && !isSubmissionActive(t));
+  // Logic: Regular tasks are limited by daily taskCount of the plan.
+  // Bonus tasks are usually one-time or separate.
+  const regularTasks = completedTodayCount < taskLimit 
+    ? tasks.filter(t => t.type !== 'bonus' && !isSubmissionActive(t))
+    : [];
   const bonusTasks = tasks.filter(t => t.type === 'bonus' && !isSubmissionActive(t));
+  
   const availableTasks = [...regularTasks, ...bonusTasks];
   const completedTasks = tasks.filter(t => isSubmissionActive(t));
 
@@ -338,22 +350,52 @@ export const TasksPage = () => {
 
       {activeTab === 'available' ? (
         <div className="space-y-6">
-          {availableTasks.length === 0 && (
+          {userData?.status !== 'active' && (
+            <div className="text-center py-16 bg-white rounded-3xl border border-slate-100 shadow-sm">
+               <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                 <Clock size={32} />
+               </div>
+               <h2 className="text-xl font-black text-slate-900 mb-1">Account Not Activated</h2>
+               <p className="text-slate-500 font-medium text-sm mb-6 max-w-xs mx-auto">Please activate your account to unlock high-reward jobs and start earning.</p>
+               <button 
+                 onClick={() => navigate('/activation-payment')}
+                 className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-600 transition-all"
+               >
+                 Activate Now
+               </button>
+            </div>
+          )}
+
+          {userData?.status === 'active' && availableTasks.length === 0 && (
             <div className="text-center py-10 bg-white rounded-3xl border border-slate-100 shadow-sm mb-4">
                <Clock className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-               <h2 className="text-xl font-black text-slate-900 mb-1">No Jobs Available</h2>
-               <p className="text-slate-500 font-medium text-sm mb-4">Please check back later. Completed jobs will reappear 24 hours after completion.</p>
+               <h2 className="text-xl font-black text-slate-900 mb-1">
+                 {completedTodayCount >= taskLimit && taskLimit > 0 ? "Daily Limit Reached" : "No Jobs Available"}
+               </h2>
+               <p className="text-slate-500 font-medium text-sm mb-4">
+                 {completedTodayCount >= taskLimit && taskLimit > 0 
+                   ? "You have completed your daily task quota. New tasks will be available after the countdown." 
+                   : "Please check back later. Completed jobs will reappear 24 hours after completion."}
+               </p>
                {completedTasks.length > 0 && (
                  <div className="max-w-xs mx-auto bg-blue-50 border border-blue-100 text-blue-700 py-3 px-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 shadow-sm">
-                   <div className="text-xs text-blue-600/80 uppercase tracking-widest uppercase">Next job available in</div>
-                   <div className="text-2xl"><LiveCountdown targetDate={Math.min(...completedTasks.map(t => new Date(submissions[t.id]?.createdAt || 0).getTime() + (24 * 60 * 60 * 1000)))} /></div>
+                   <div className="text-xs text-blue-600/80 uppercase tracking-widest uppercase">New jobs available in</div>
+                   <div className="text-2xl">
+                     <LiveCountdown 
+                       targetDate={
+                         completedTodayCount >= taskLimit 
+                           ? Math.max(...allSubmissions.filter(s => new Date(s.createdAt).toISOString().split('T')[0] === new Date().toISOString().split('T')[0]).map(s => new Date(s.createdAt).getTime() + (24 * 60 * 60 * 1000)))
+                           : Math.min(...completedTasks.map(t => new Date(submissions[t.id]?.createdAt || 0).getTime() + (24 * 60 * 60 * 1000)))
+                       } 
+                     />
+                   </div>
                  </div>
                )}
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {availableTasks.map((task) => (
+            {userData?.status === 'active' && availableTasks.map((task) => (
               <motion.div 
                 layoutId={task.id}
                 key={task.id}
@@ -442,7 +484,7 @@ export const TasksPage = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900 line-clamp-1">{title}</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(sub.createdAt).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Completed: {format(new Date(sub.createdAt), 'dd MMMM yyyy h:mm a')}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">

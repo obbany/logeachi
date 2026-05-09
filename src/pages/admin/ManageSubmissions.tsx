@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, updateDoc, doc, runTransaction, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Check, X, Eye, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 
 export const ManageSubmissions = () => {
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -77,7 +78,7 @@ export const ManageSubmissions = () => {
           <div key={sub.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
               <div className="text-sm font-black text-slate-900 tracking-tight">ID: {sub.userShortId || 'N/A'}</div>
-              <div className="text-[10px] text-slate-400 font-bold uppercase">{new Date(sub.createdAt).toLocaleTimeString()}</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase">{format(new Date(sub.createdAt), 'dd MMMM yyyy h:mm a')}</div>
             </div>
             
             <div className="relative aspect-video group cursor-zoom-in" onClick={() => setSelectedImage(sub.screenshotUrl)}>

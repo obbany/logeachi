@@ -11,6 +11,7 @@ export interface User {
   status: UserStatus;
   balance: number;
   totalWithdraw: number;
+  totalReferralEarnings?: number;
   referralCode: string;
   referredBy?: string;
   country: string;
@@ -18,6 +19,7 @@ export interface User {
   createdAt: string;
   packageId?: string;
   packageName?: string;
+  planExpiresAt?: string;
 }
 
 export interface Task {
@@ -85,4 +87,5 @@ export interface Activation {
   packageName?: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  planExpiresAt?: string;
 }

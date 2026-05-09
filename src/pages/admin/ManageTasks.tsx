@@ -31,7 +31,7 @@ export const ManageTasks = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [taskFormData, setTaskFormData] = useState<Partial<Task>>({
-    title: '', description: '', reward: 0, platform: 'youtube', category: 'Watch & Earn', url: '', thumbnail: '', status: 'available', packageId: ''
+    title: '', description: '', reward: 0, platform: 'youtube', category: 'YouTube', url: '', thumbnail: '', status: 'available', packageId: ''
   });
 
   const [isAddingPlan, setIsAddingPlan] = useState(false);
@@ -50,7 +50,7 @@ export const ManageTasks = () => {
     // Fetch Tasks
     const snap = await getDocs(collection(db, 'tasks'));
     const allTasks = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-    setTasks(allTasks.filter(t => t.type !== 'bonus'));
+    setTasks(allTasks.filter(t => t.type !== 'bonus').sort((a, b) => new Date(b.createdAt || '1970-01-01').getTime() - new Date(a.createdAt || '1970-01-01').getTime()));
     
     // Fetch Plans
     const plansSnap = await getDocs(collection(db, 'packages'));
@@ -59,14 +59,30 @@ export const ManageTasks = () => {
     setLoading(false);
   };
 
+  const getPlatformStyle = (platform: string) => {
+    switch (platform) {
+      case 'youtube': return { bg: 'bg-red-100', icon: <Youtube className="text-red-600" size={24} /> };
+      case 'facebook': return { bg: 'bg-blue-100', icon: <Facebook className="text-blue-600" size={24} /> };
+      case 'telegram': return { bg: 'bg-sky-100', icon: <Telegram className="text-sky-600" size={24} /> };
+      case 'website': return { bg: 'bg-purple-100', icon: <Globe className="text-purple-600" size={24} /> };
+      case 'app': return { bg: 'bg-emerald-100', icon: <Layout className="text-emerald-600" size={24} /> };
+      default: return { bg: 'bg-slate-100', icon: <ImageIcon className="text-slate-400" size={24} /> };
+    }
+  };
+
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       let thumbnail = taskFormData.thumbnail;
       if (selectedFile) {
-        const storageRef = ref(storage, `tasks/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(storageRef, selectedFile);
-        thumbnail = await getDownloadURL(storageRef);
+        try {
+          const storageRef = ref(storage, `tasks/${Date.now()}_${selectedFile.name}`);
+          await uploadBytes(storageRef, selectedFile);
+          thumbnail = await getDownloadURL(storageRef);
+        } catch (storageError) {
+          console.error('Storage upload error:', storageError);
+          throw new Error('Failed to upload image. Please check storage permissions.');
+        }
       }
 
       const dataToSave = { ...taskFormData, thumbnail };
@@ -78,11 +94,11 @@ export const ManageTasks = () => {
       setIsAddingTask(false);
       setEditingTask(null);
       setSelectedFile(null);
-      setTaskFormData({ title: '', description: '', reward: 0, platform: 'youtube', category: 'Watch & Earn', url: '', thumbnail: '', status: 'available', packageId: '' });
+      setTaskFormData({ title: '', description: '', reward: 0, platform: 'youtube', category: 'YouTube', url: '', thumbnail: '', status: 'available', packageId: '' });
       fetchData();
     } catch (e) {
-      console.error(e);
-      alert('Error saving task');
+      console.error('Submit error:', e);
+      alert(`Error saving task: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   };
 
@@ -149,7 +165,7 @@ export const ManageTasks = () => {
     fetchData();
   };
 
-  const categories = ['Watch & Earn', 'Social Follow', 'App Review', 'Website Visit', 'Other'];
+  const categories = ['YouTube', 'Facebook', 'Telegram', 'Website', 'App Install'];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -160,18 +176,42 @@ export const ManageTasks = () => {
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           {activeTab === 'jobs' ? (
-            <button 
-              onClick={() => {
-                setEditingTask(null);
-                setTaskFormData({
-                  title: '', description: '', reward: 0, platform: 'youtube', category: 'Watch & Earn', url: '', thumbnail: '', status: 'available', packageId: ''
-                });
-                setIsAddingTask(true);
-              }}
-              className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center gap-2"
-            >
-              <Plus size={20} /> Add New Job
-            </button>
+            <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {[{ title: 'Subscribe YouTube Channel', category: 'YouTube', platform: 'youtube', reward: 1, description: 'Visit the link, subscribe to the channel, and stay for 15 seconds.', status: 'available' },
+                  { title: 'Like Facebook Page', category: 'Facebook', platform: 'facebook', reward: 1, description: 'Visit the link, like the page, and stay for 15 seconds.', status: 'available' },
+                  { title: 'Join Telegram Channel', category: 'Telegram', platform: 'telegram', reward: 1, description: 'Visit the link, join the channel, and stay for 15 seconds.', status: 'available' },
+                  { title: 'Visit Website', category: 'Website', platform: 'website', reward: 1, description: 'Visit the link, browse the website, and stay for 15 seconds.', status: 'available' },
+                  { title: 'Install Mobile App', category: 'App Install', platform: 'app', reward: 1, description: 'Download and install the mobile app as instructed.', status: 'available' }
+                ].map(t => (
+                    <button 
+                      key={t.category}
+                      onClick={async () => {
+                        setLoading(true);
+                        await addDoc(collection(db, 'tasks'), { ...t, createdAt: new Date().toISOString() });
+                        fetchData();
+                        alert(`${t.category} template generated!`);
+                        setLoading(false);
+                      }}
+                      className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-sm"
+                    >
+                      +{t.category}
+                    </button>
+                ))}
+              </div>
+              <button 
+                onClick={() => {
+                  setEditingTask(null);
+                  setTaskFormData({
+                    title: '', description: '', reward: 0, platform: 'youtube', category: 'YouTube', url: '', thumbnail: '', status: 'available', packageId: ''
+                  });
+                  setIsAddingTask(true);
+                }}
+                className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center gap-2"
+              >
+                <Plus size={20} /> Add New Job
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col w-full sm:w-auto sm:flex-row gap-2">
               <button 
@@ -242,7 +282,7 @@ export const ManageTasks = () => {
                         </div>
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Reward Amount (৳)</label>
-                          <input type="number" value={taskFormData.reward} onChange={e => setTaskFormData({...taskFormData, reward: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="number" value={taskFormData.reward === 0 ? '' : taskFormData.reward} onChange={e => setTaskFormData({...taskFormData, reward: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                       </div>
                       
@@ -272,6 +312,7 @@ export const ManageTasks = () => {
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Upload Image</label>
                           <input type="file" accept="image/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          {selectedFile && <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="mt-2 w-32 h-32 rounded-xl object-cover" />}
                         </div>
                       </div>
                       
@@ -296,9 +337,7 @@ export const ManageTasks = () => {
                           {task.thumbnail ? (
                             <img src={task.thumbnail} alt="" className="w-16 h-16 rounded-xl object-cover" />
                           ) : (
-                            <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                              <ImageIcon size={24} />
-                            </div>
+                            <div className="w-16 h-16 rounded-xl bg-slate-100" />
                           )}
                           <div className="flex gap-2">
                             <button onClick={() => toggleTaskStatus(task)} className={cn("p-2 rounded-lg transition-colors", task.status === 'available' ? "bg-amber-100 text-amber-600 hover:bg-amber-200" : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200")}>
@@ -349,19 +388,19 @@ export const ManageTasks = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Price (৳)</label>
-                          <input type="number" value={planFormData.price} onChange={e => setPlanFormData({...planFormData, price: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="number" value={planFormData.price === 0 ? '' : planFormData.price} onChange={e => setPlanFormData({...planFormData, price: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Daily Income (৳)</label>
-                          <input type="number" value={planFormData.dailyIncome} onChange={e => setPlanFormData({...planFormData, dailyIncome: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="number" value={planFormData.dailyIncome === 0 ? '' : planFormData.dailyIncome} onChange={e => setPlanFormData({...planFormData, dailyIncome: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Validity (Days)</label>
-                          <input type="number" value={planFormData.validity} onChange={e => setPlanFormData({...planFormData, validity: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="number" value={planFormData.validity === 0 ? '' : planFormData.validity} onChange={e => setPlanFormData({...planFormData, validity: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-2">Daily Tasks Allowed</label>
-                          <input type="number" value={planFormData.taskCount} onChange={e => setPlanFormData({...planFormData, taskCount: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="number" value={planFormData.taskCount === 0 ? '' : planFormData.taskCount} onChange={e => setPlanFormData({...planFormData, taskCount: Number(e.target.value)})} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                       </div>
 

@@ -18,6 +18,7 @@ import { collection, addDoc, query, where, getDocs, orderBy, limit, doc, getDoc,
 import { Config, Withdrawal } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { format } from 'date-fns';
 
 export const WithdrawPage = () => {
   const { userData, refreshUserData } = useAuth();
@@ -225,7 +226,7 @@ export const WithdrawPage = () => {
                    <div className="p-3 bg-slate-100 rounded-xl"><History size={16} /></div>
                    <div>
                      <p className="font-black text-xs uppercase">{h.method}</p>
-                     <p className="text-[10px] text-slate-400 font-bold">{h.createdAt ? new Date(h.createdAt as any).toLocaleDateString() : 'N/A'}</p>
+                     <p className="text-[10px] text-slate-400 font-bold">{h.createdAt ? format(new Date(h.createdAt as any), 'dd MMMM yyyy') : 'N/A'}</p>
                    </div>
                  </div>
                  <div className="text-right">

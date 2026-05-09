@@ -15,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { format } from 'date-fns';
 
 const InfoRow = ({ icon: Icon, label, value }: any) => (
   <div className="flex items-center gap-4 py-3 border-b border-slate-50 last:border-0 font-sans">
@@ -159,7 +160,7 @@ export const ProfilePage = () => {
             <div className="grid grid-cols-1 gap-3 w-full">
               <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400">Join Date</span>
-                <span className="text-xs font-semibold text-slate-700">{userData.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'N/A'}</span>
+                <span className="text-xs font-semibold text-slate-700">{userData.createdAt ? format(new Date(userData.createdAt), 'dd MMMM yyyy') : 'N/A'}</span>
               </div>
             </div>
           </div>

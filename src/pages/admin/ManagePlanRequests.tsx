@@ -128,7 +128,14 @@ export const ManagePlanRequests = () => {
         }
 
         let planExpiresAt = new Date();
-        planExpiresAt.setDate(planExpiresAt.getDate() + (req.validity || 30));
+        const validityDays = req.validity || 30;
+        
+        // Use month-based increment if validity is a multiple of 30 for better user expectation alignment
+        if (validityDays % 30 === 0) {
+          planExpiresAt.setMonth(planExpiresAt.getMonth() + (validityDays / 30));
+        } else {
+          planExpiresAt.setDate(planExpiresAt.getDate() + validityDays);
+        }
         
         batch.set(targetRef, {
           status: 'active', // Mark active just in case
@@ -302,7 +309,7 @@ export const ManagePlanRequests = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500">
-                    {req.createdAt ? format(new Date(req.createdAt), 'MMM d, yyyy h:mm a') : 'N/A'}
+                    {req.createdAt ? format(new Date(req.createdAt), 'dd MMMM yyyy h:mm a') : 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {req.status === 'pending' ? (

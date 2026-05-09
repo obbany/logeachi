@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/AuthPage';
@@ -118,6 +118,11 @@ const SeedData = () => {
   return null;
 };
 
+const AuthRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/register${location.search}`} replace />;
+};
+
 export default function App() {
   return (
     <AuthProvider>
@@ -126,6 +131,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route path="/auth" element={<AuthRedirect />} />
           
           <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />

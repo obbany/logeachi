@@ -6,6 +6,7 @@ import { db } from '../lib/firebase';
 import { User } from '../types';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { format } from 'date-fns';
 
 export const TeamPage = () => {
   const { userData } = useAuth();
@@ -75,7 +76,7 @@ export const TeamPage = () => {
         </div>
         <button 
           onClick={async () => {
-            const referralLink = `${window.location.origin}/auth?ref=${userData.referralCode}`;
+            const referralLink = `${window.location.origin}/register?ref=${userData.referralCode}`;
             const shareData = {
               title: 'Join my team!',
               text: 'Check out this platform and join my team using my referral code.',
@@ -101,6 +102,16 @@ export const TeamPage = () => {
           <UserPlus size={18} />
           Invite Member
         </button>
+      </div>
+
+      <div className="bg-emerald-600 text-white p-6 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-200">
+        <div>
+           <p className="text-emerald-100 text-sm font-medium">Total Referral Earnings</p>
+           <h2 className="text-3xl font-black mt-1">৳{(userData?.totalReferralEarnings || 0).toFixed(2)}</h2>
+        </div>
+        <div className="bg-emerald-500 p-3 rounded-xl">
+          <TrendingUp size={24} />
+        </div>
       </div>
 
       {/* Level Tabs & Filter */}
@@ -161,7 +172,6 @@ export const TeamPage = () => {
                 <th className="px-6 py-4 font-bold text-slate-600">Member</th>
                 <th className="px-6 py-4 font-bold text-slate-600 text-center">Status</th>
                 <th className="px-6 py-4 font-bold text-slate-600">Joined Date</th>
-                <th className="px-6 py-4 font-bold text-slate-600 text-right">Balance</th>
                 <th className="px-6 py-4 font-bold text-slate-600 text-right">Earning Contributed</th>
               </tr>
             </thead>
@@ -196,10 +206,7 @@ export const TeamPage = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-500">
-                    {new Date(member.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-right font-bold text-slate-900">
-                    ৳{(member.balance || 0).toFixed(2)}
+                    {format(new Date(member.createdAt), 'dd MMMM yyyy')}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-slate-900">
                     ৳0.00

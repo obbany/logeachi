@@ -29,7 +29,8 @@ export const distributeCommission = async (newUser: any) => {
             console.log(`Adding ${commissionAmount} to user ${referrerDoc.data().name} (Gen ${i})`);
             
             await updateDoc(referrerRef, { 
-                balance: increment(commissionAmount)
+                balance: increment(commissionAmount),
+                totalReferralEarnings: increment(commissionAmount)
             });
 
             // Log Transaction

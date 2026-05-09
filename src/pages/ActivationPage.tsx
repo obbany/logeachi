@@ -21,6 +21,8 @@ import { Config, Activation, PackagePlan } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
+import { format } from 'date-fns';
+
 export const ActivationPage = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
@@ -79,22 +81,12 @@ export const ActivationPage = () => {
         const pending = hData.find(a => a.status === 'pending');
         setExistingRequest(pending || null);
 
-        const active = hData.find(h => {
-          if (h.status !== 'approved') return false;
-          const plan = plansData.find(p => p.id === h.packageId);
-          if (!plan) return false;
-          const createdAt = new Date(h.createdAt).getTime();
-          const validity = plan.validity * 24 * 60 * 60 * 1000;
-          return (createdAt + validity) > Date.now();
-        });
-        
-        if (active) {
-          const plan = plansData.find(p => p.id === active.packageId);
+        // Check for active plan from userData first
+        if (userData?.packageId && userData?.planExpiresAt) {
+          const plan = plansData.find(p => p.id === userData.packageId);
           if (plan) {
             setActivePlan(plan);
-            const createdAt = new Date(active.createdAt).getTime();
-            const expiresAt = createdAt + (plan.validity * 24 * 60 * 60 * 1000);
-            setPlanExpiresAt(expiresAt);
+            setPlanExpiresAt(new Date(userData.planExpiresAt).getTime());
           }
         } else {
           setActivePlan(null);
@@ -227,7 +219,7 @@ export const ActivationPage = () => {
                            <div className="flex justify-between items-center text-xs font-bold">
                              <span className="text-emerald-100 uppercase tracking-widest">Expires On</span>
                              <span className="text-white text-sm">
-                               {planExpiresAt ? new Date(planExpiresAt).toLocaleDateString() : 'N/A'}
+                               {planExpiresAt ? format(new Date(planExpiresAt), 'dd MMMM yyyy') : 'N/A'}
                              </span>
                            </div>
                         </div>
